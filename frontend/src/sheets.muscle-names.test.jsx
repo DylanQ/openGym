@@ -104,7 +104,7 @@ describe('muscle names in the rows and tags (QA C9)', () => {
     exercisePicker(vi.fn())
     const host = renderTop()
     act(() => type(host.querySelector('input.input'), 'burpee'))
-    expect(rowFor(host, 'burpee').querySelector('.ss').textContent).toBe('Herz-Kreislauf · Körpergewicht')
+    expect(rowFor(host, 'Burpee').querySelector('.ss').textContent).toBe('Herz-Kreislauf · Körpergewicht')
     exConfigSheet(EXIDX['1160'], null, vi.fn())
     const tags = [...renderTop().querySelectorAll('.tag')].map(e => e.textContent.trim())
     expect(tags).toEqual(['Cardio', 'Herz-Kreislauf', 'Körpergewicht'])

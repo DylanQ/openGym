@@ -141,9 +141,9 @@ describe('encodeFit', () => {
 
 /* ----------------------------------------------------------- the workout -- */
 
-const BENCH = Object.values(EXIDX).find(e => e.n === 'barbell bench press').id
-const CURL = Object.values(EXIDX).find(e => e.n === 'dumbbell curl' || /^dumbbell.*curl$/.test(e.n)).id
-const PLANK = Object.values(EXIDX).find(e => e.n === 'front plank' || /plank$/.test(e.n)).id
+const BENCH = Object.values(EXIDX).find(e => (e.nOrig || e.n) === 'barbell bench press').id
+const CURL = Object.values(EXIDX).find(e => (e.nOrig || e.n) === 'dumbbell curl' || /^dumbbell.*curl$/.test(e.nOrig || e.n)).id
+const PLANK = Object.values(EXIDX).find(e => (e.nOrig || e.n) === 'front plank' || /plank$/.test(e.nOrig || e.n)).id
 const TREADMILL = '2259'   // walking on treadmill
 const BIKE = '2138'        // stationary bike run v. 3
 const T0 = Date.UTC(2026, 9, 9, 17)

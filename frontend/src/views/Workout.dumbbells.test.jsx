@@ -48,7 +48,7 @@ const heads = () => [...container.querySelectorAll('.sethead .w-sp')].map(el => 
 describe('dumbbell weight column', () => {
   it('the exercises used here are what the test assumes', () => {
     expect(EXIDX[BENCH].eq).toBe('dumbbell')
-    expect(EXIDX[ROW].n).toMatch(/one arm/)
+    expect(EXIDX[ROW].n).toMatch(/one arm/i)
   })
 
   it('names the meaning the session logs in', () => {

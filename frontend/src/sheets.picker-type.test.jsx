@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRoot } from 'react-dom/client'
 import { DEF, useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
-import { EXDB } from './lib/exercises.js'
+import { CATALOGUE, EXDB } from './lib/exercises.js'
 import { exerciseNameText } from './lib/format.js'
 import { exercisePicker } from './sheets.jsx'
 
@@ -60,7 +60,7 @@ describe('exercise picker type filter', () => {
     expect(isOn(chipByText(host, 'stretching'))).toBe(true)
     const names = listed(host)
     expect(names.length).toBeGreaterThan(0)
-    const catOf = new Map(EXDB.map(e => [`Add “${exerciseNameText(e)}”`, e.cat]))
+    const catOf = new Map(CATALOGUE.map(e => [`Add “${exerciseNameText(e)}”`, e.cat]))
     expect(names.filter(n => catOf.get(n) !== 'stretching')).toEqual([])
   })
 

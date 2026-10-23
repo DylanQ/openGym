@@ -98,8 +98,8 @@ describe('StructuralBalance view', () => {
     }
   })
 
-  // Catalogue names are lower case ("barbell full squat"); every other list capitalises an English
-  // one (exerciseNameClass), while a translated name keeps its own casing.
+  // This fork's catalogue names are cased ("Barbell Full Squat"); every other list capitalises an
+  // English one (exerciseNameClass), while a translated name keeps its own casing.
   it('capitalises each row\'s exercise name like the other lists, and only the name', () => {
     const host = render()
     for (const row of host.querySelectorAll('[data-role-id]')) {
@@ -107,7 +107,7 @@ describe('StructuralBalance view', () => {
       expect(name.classList.contains('capitalize'), row.dataset.roleId).toBe(true)
       expect(name.textContent.length).toBeGreaterThan(0)
     }
-    expect(host.querySelector('[data-role-id="narrowBench"] [data-exercise-name]').textContent).toBe('barbell close-grip bench press')
+    expect(host.querySelector('[data-role-id="narrowBench"] [data-exercise-name]').textContent).toBe('Barbell Close-Grip Bench Press')
   })
 
   it('picking a role\'s own default exercise does not mark it custom', () => {

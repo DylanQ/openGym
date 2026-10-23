@@ -1888,7 +1888,7 @@ describe('workout focus view', () => {
       exercise('squat', [false]),
     ], 0, { active: { workoutView: 'focus' } })
 
-    expect(container.textContent).toContain('band alternating biceps curl + band bench press')
+    expect(container.textContent).toContain('Band Alternating Biceps Curl + Band Bench Press')
     expect(container.textContent).toContain('Round 1')
     expect(container.textContent).toContain('Exercise 1 of 2')
 

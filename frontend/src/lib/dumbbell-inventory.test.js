@@ -31,7 +31,7 @@ describe('the inventory', () => {
   it('the exercises used here are what the test assumes', () => {
     expect(EXIDX[CURL].eq).toBe('dumbbell')
     expect(EXIDX[BENCH].eq).toBe('dumbbell')
-    expect(EXIDX[ROW].n).toMatch(/one arm/)
+    expect(EXIDX[ROW].n).toMatch(/one arm/i)
     expect(EXIDX[KB].eq).toBe('kettlebell')
     expect(EXIDX[SQUAT].eq).toBe('barbell')
   })

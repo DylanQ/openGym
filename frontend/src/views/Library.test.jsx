@@ -7,7 +7,7 @@ import { resolve } from 'node:path'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Library from './Library.jsx'
-import { EXDB } from '../lib/exercises.js'
+import { CATALOGUE, EXDB, EXIDX } from '../lib/exercises.js'
 import { CASED_NAME_LANGS, EXERCISE_NAME_LANGS, _setLangState } from '../lib/i18n-core.js'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -48,7 +48,7 @@ describe('Library favourites', () => {
     const plain = names(render())
     act(() => { mounted.splice(0).forEach(root => root.unmount()) })
     const fav = [plain[6], plain[2]]
-    mocks.S.favEx = fav.map(n => EXDB.find(e => e.n === n).id)
+    mocks.S.favEx = fav.map(n => CATALOGUE.find(e => e.n === n).id)
     const host = render()
     const shown = names(host)
     expect(shown.slice(0, 2)).toEqual(plain.filter(n => fav.includes(n)))
@@ -81,8 +81,8 @@ describe('Library favourites', () => {
     const chip = [...host.querySelectorAll('.chips .chip')].find(b => b.textContent === 'chest')
     act(() => chip.click())
     const shown = names(host)
-    expect(shown[0]).toBe(chest[4].n)
-    expect(shown).not.toContain(legs.n)
+    expect(shown[0]).toBe(EXIDX[chest[4].id].n)
+    expect(shown).not.toContain(EXIDX[legs.id].n)
   })
 })
 
@@ -174,7 +174,7 @@ describe('Library similar exercises', () => {
     search(host, 'dumbbell curl qwxz')
     expect(label(host)).toBe('No exact match. These come close:')
     expect(host.textContent).not.toContain('No match')
-    expect(names(host).slice(0, 5).some(n => /dumbbell.*curl/.test(n))).toBe(true)
+    expect(names(host).slice(0, 5).some(n => /dumbbell.*curl/i.test(n))).toBe(true)
   })
 
   it('lists similar ones under a short result list, without repeating a result', () => {

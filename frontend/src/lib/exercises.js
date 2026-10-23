@@ -1,5 +1,6 @@
 import { EXDB, EXALIAS } from './exercises-data.js'
 import MUSCLE_MAP from './exercise-muscle-map.json' with { type: 'json' }
+import NAME_MAP from './exercise-name-map.json' with { type: 'json' }
 import V13_IDS from './catalogue-v13-ids.json' with { type: 'json' }
 import { t, getVersion, exerciseNameSearchText } from './i18n-core.js'
 
@@ -9,10 +10,18 @@ export { EXDB }
 // Where someone has drawn the muscles more precisely (catalogue "muscleMap": the compound lifts,
 // machines and Olympic lifts, ExRx-informed and owner-approved), that layer is applied here, so
 // the pickers and every muscle map see the corrected model while EXDB stays the plain list.
+//
+// The same layer carries this fork's exercise rename (exercise-name-map.json): the dataset's
+// names ("lever seated leg press v. 2") read as Fitbod-style display names ("Machine Seated
+// Leg Press"). The display name replaces `n` on the catalogue entry and the dataset's own name
+// is kept alongside as `nOrig`, so search matches both. EXDB itself is never rewritten — stored
+// data holds exercise ids only, and export/print/import keep reading the pristine dataset.
 const catalogueExercise = ex => {
   const metadata = MUSCLE_MAP[ex?.id]
-  if (!metadata) return ex
+  const renamed = NAME_MAP[ex?.id]
+  if (!metadata && !renamed) return ex
   const out = { ...ex, ...metadata }
+  if (renamed && renamed !== ex.n) { out.nOrig = ex.n; out.n = renamed }
   if (Array.isArray(out.primaries)) out.primaries = [...out.primaries]
   if (Array.isArray(out.secondaries)) out.secondaries = [...out.secondaries]
   return out
@@ -143,7 +152,7 @@ export function searchScore(exercise, query) {
   const needle = searchableText(query).toLowerCase().trim()
   if (!needle) return 1
   const source = exercise && typeof exercise === 'object' ? exercise : {}
-  const fields = [['n', 100], ['tg', 40], ['eq', 40], ['sm', 30], ['muscleGroups', 30], ['primaries', 30], ['secondaries', 30], ['desc', 10], ['cues', 10]]
+  const fields = [['n', 100], ['nOrig', 100], ['tg', 40], ['eq', 40], ['sm', 30], ['muscleGroups', 30], ['primaries', 30], ['secondaries', 30], ['desc', 10], ['cues', 10]]
   // Token-level matching: every query word must match somewhere (any order), so
   // "press bench" finds "Bench Press". The score sums each token's best hit.
   const tokens = needle.split(/[^a-z0-9]+/).filter(Boolean)
@@ -242,8 +251,10 @@ const ASSISTED_EQ = 'leverage machine'
 const assistedName = n => /\bassist(ed)?\b/i.test(String(n || ''))
 
 // The catalogue entry itself carries an `id`, so this never recurses through it — one lookup,
-// then the shape is read directly.
-const assistedShape = ex => (typeof ex?.assisted === 'boolean' ? ex.assisted : ex?.eq === ASSISTED_EQ && assistedName(ex?.n))
+// then the shape is read directly. The dataset's own name (`nOrig`) counts alongside the display
+// name: this fork's rename (exercise-name-map.json) can drop the word from a display name
+// ("assisted pull-up" shows as "Machine Pull-Up"), and a rename must never unmake a machine.
+const assistedShape = ex => (typeof ex?.assisted === 'boolean' ? ex.assisted : ex?.eq === ASSISTED_EQ && (assistedName(ex?.n) || assistedName(ex?.nOrig)))
 
 // Body parts where a 5 kg jump is normal rather than brutal.
 const HEAVY_BP = ['upper legs', 'lower legs', 'back', 'hips', 'glutes']
@@ -310,8 +321,12 @@ function corpusOf(e) {
   if (hit && hit.v === v) return hit
   const sm = Array.isArray(e?.sm) ? e.sm : []
   const name = normalizeStr(exerciseNameSearchText(e))
+  // The dataset's own name rides along with the display name (see catalogueExercise), so a
+  // search typed the way the dataset — or an imported plan — spells it still finds the lift.
+  const orig = normalizeStr(e?.nOrig || '')
   const s = normalizeStr([
     name,
+    orig,
     e?.tg || '', t(e?.tg || ''),
     e?.eq || '', t(e?.eq || ''),
     e?.bp || '', t(e?.bp || ''),
@@ -323,7 +338,8 @@ function corpusOf(e) {
   // a body part and an equipment word would start matching as one.
   // The joined form only counts from the start of a name word, or "thigh" would find "sumo
   // deadlift high pull" through "deadlifthighpull".
-  const entry = { v, s, name, ...joinedOf(name), nameWords: name.split(/[\s\-‐-―()/,]+/).filter(Boolean) }
+  const nameWords = [...new Set([...name.split(/[\s\-‐-―()/,]+/), ...orig.split(/[\s\-‐-―()/,]+/)].filter(Boolean))]
+  const entry = { v, s, name, ...joinedOf(name), nameWords }
   for (const w of entry.nameWords) VOCAB.add(w)
   corpusCache.set(e, entry)
   return entry

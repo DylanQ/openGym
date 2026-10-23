@@ -4,7 +4,7 @@
 import React, { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRoot } from 'react-dom/client'
-import { EXDB } from './lib/exercises.js'
+import { CATALOGUE, EXDB } from './lib/exercises.js'
 import { DEF, useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { exerciseDetailSheet, exercisePicker } from './sheets.jsx'
@@ -67,7 +67,7 @@ describe('exercise picker', () => {
     const plain = names((exercisePicker(vi.fn()), renderTop())).slice(1)   // drop "Create your own"
     useUI.setState({ sheets: [] })
     const fav = [plain[7], plain[3]]
-    const favIds = fav.map(n => EXDB.find(e => e.n === n).id)
+    const favIds = fav.map(n => CATALOGUE.find(e => e.n === n).id)
     useStore.setState(s => ({ S: { ...s.S, favEx: favIds } }))
     exercisePicker(vi.fn())
     const host = renderTop()
@@ -91,6 +91,6 @@ describe('exercise picker', () => {
     host = renderTop()
     expect(chip(host).textContent).toBe('Favourites (2)')
     act(() => chip(host).click())
-    expect(names(host)).toEqual([EXDB[5].n, EXDB[9].n])
+    expect(names(host)).toEqual([CATALOGUE[5].n, CATALOGUE[9].n])
   })
 })

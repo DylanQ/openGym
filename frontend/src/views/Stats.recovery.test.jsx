@@ -419,7 +419,7 @@ describe('Stats strength exercise rows', () => {
     expect(muscleCard().textContent).toContain('Exercises · Chest')
     const row = [...muscleCard().querySelectorAll('.mrow[role="button"]')].find(el => el.textContent.includes('Est. 1RM'))
     expect(row, 'expected a tappable exercise row for the chest').toBeTruthy()
-    expect(row.textContent).toContain('barbell bench press')
+    expect(row.textContent).toContain('Barbell Bench Press')
 
     await click(row)
     expect(thrown).toEqual([])

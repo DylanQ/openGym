@@ -29,7 +29,7 @@ describe('the exercises this file assumes', () => {
   it('are what the tests below need', () => {
     expect(EXIDX[BENCH].eq).toBe('dumbbell')
     expect(EXIDX[ROW].eq).toBe('dumbbell')
-    expect(EXIDX[ROW].n).toMatch(/one arm/)
+    expect(EXIDX[ROW].n).toMatch(/one arm/i)
     expect(EXIDX[CURL].eq).toBe('dumbbell')
     expect(EXIDX[KB].eq).toBe('kettlebell')
     expect(EXIDX[SQUAT].eq).toBe('barbell')

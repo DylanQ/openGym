@@ -36,7 +36,7 @@ describe('planPrintHTML', () => {
     expect(body).not.toContain('Weekly Training Plan')
     expect(body).not.toContain('Pull day')
     expect(body).toContain('3 exercises · Ana ·')
-    expect(body).toContain('barbell bench press')
+    expect(body).toContain('Barbell Bench Press')
     expect(body).toContain('3 × 5 · 80 kg')
     expect(body).toContain('pause on the chest')
     expect(body).toContain('3 × 10 · 24 kg')
