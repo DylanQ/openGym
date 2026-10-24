@@ -102,6 +102,19 @@ export const DEF = {
   // to null on purpose — Dylan has never settled one (see the spec) — so the UI shows the
   // day's calorie total and a target only if he sets one.
   foods: [], foodLog: [], nutritionTargets: { proteinG: 180, calories: null },
+  // The Fitbod-style experience (this fork, fitbod-experience.md B2–B8): the training
+  // profile the First Entry wizard asks for (lib/profile.js — null reads as Dylan's
+  // derived profile on a seeded install, the plain default on a fresh one), whether the
+  // wizard has been finished, the gym profiles (lib/gyms.js — union-merged by id like
+  // equipProfiles, and mirrored onto them when one is made active), the standing
+  // per-exercise recommendation signal and the passive swap-learning counters
+  // (lib/ex-pref.js), manual recovery overrides (lib/freshness.js), and today's
+  // composed plan with the one it replaced kept as its Undo (lib/generate.js). The plan
+  // is derived data — it is cached here so the preview can hold edits, and composing
+  // again is always safe.
+  profile: null, onboarded: false, gyms: [], activeGymId: null,
+  exPref: {}, swapStats: {}, recoveryOverride: {},
+  todayPlan: null, todayPlanPrev: null,
   queue: null,   // a planner's floating week (lib/queue.js) — via the API, or by this rotation feature (below)
   // The in-app rotation's reusable definition — { id, sequence, label } (lib/rotation.js). Never
   // a live queue: it only ever feeds `queue`, and `queue.rotationId` says the pass is managed here.

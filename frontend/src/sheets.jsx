@@ -46,6 +46,7 @@ import { speedUnitOf, toSpeed, fromSpeed } from './lib/speed.js'
 import { buildCompletedWorkout, sessionEnd } from './lib/finish-workout.js'
 import { refillAfter } from './lib/rotation.js'
 import { isWarmupRow, hasCompletedWork } from './lib/workout-model.js'
+import { recordSwap } from './lib/ex-pref.js'
 import { saveSessionAsRoutine } from './lib/session-routines.js'
 import { repeatSessionEntries } from './lib/session-repeat.js'
 import { swapActiveExercise } from './lib/active-exercise-swap.js'
@@ -1539,7 +1540,12 @@ export function swapActiveWorkoutExercise(index) {
       // before the selected occurrence can be replaced or a new entry shifts those indexes.
       ui().stopWork()
       ui().stopRest()
-      update(state => { swapActiveExercise(state.active, index, replacement, options) }, true)
+      update(state => {
+        // Passive swap learning (lib/ex-pref.js): a swap away is data for the
+        // generator, counted here, at the one door every mid-workout swap uses.
+        recordSwap(state, current.id, ex.id, Date.now())
+        swapActiveExercise(state.active, index, replacement, options)
+      }, true)
     }
     const logged = (current.sets || []).some(set => set.done === true)
     if (!logged) { apply(); return }
@@ -2981,6 +2987,42 @@ export function beginWorkout(routineIds, bw, { id = null, start = null } = {}) {
 // "Repeat today" (#58): a saved workout's exercises as a new freestyle session dated today, each
 // seeded from what that workout logged (lib/session-repeat.js). The weigh-in asks first, the
 // way starting any workout does.
+/* Start the composed Today's Entry (lib/generate.js). The plan's entries are already
+   plain session entries, so starting is a handoff, not a rebuild; the plan itself stays
+   in S.todayPlan as the record of what was prescribed. The weigh-in asks first, the
+   way starting any workout does. */
+export function startTodayPlan() {
+  const st = S()
+  if (st.active) { toast(t('Finish the current workout first.')); return }
+  const plan = st.todayPlan
+  if (!plan?.entries?.length) return
+  const entries = plan.entries.map(e => ({
+    id: e.id, ...(e.sg ? { sg: e.sg } : {}), target: e.target, plan: e.plan, sets: e.sets, planned: e.planned,
+  }))
+  const go = bw => {
+    if (S().active) { toast(t('Finish the current workout first.')); return }
+    update(s => {
+      s.active = {
+        id: uid(), d: todayISO(), start: Date.now(), routineIds: [],
+        name: plan.dayName, bw: bw || null, cur: 0, entries,
+        workoutView: s.workoutView || 'cards', fromPlan: true,
+      }
+    })
+    useUI.getState().stopRest()
+    navToWorkout()
+
+    // ── ACTIVITY → PLAYLIST BINDING (music pillar hook) ────────────────────────
+    // When the BitChord pillar lands, the binding fires here: the day key, the gym
+    // and the date identify the activity ("Push Day at Planet Fitness"), and the
+    // binding maps it to the playlist the user attached to that activity.
+    // Deliberately a no-op seam today — starting a workout never waits on music.
+    onTodayPlanStart({ dayKey: plan.dayKey, gymId: plan.gymId, date: plan.date })
+  }
+  if (st.weighIn === false) { go(null); return }
+  bwSheet({ required: true, onDone: go })
+}
+function onTodayPlanStart(_activity) { /* music pillar: the playlist binding attaches here */ }
+
 export function repeatWorkout(w, close) {
   const st = S()
   if (st.active) { toast(t('Finish the current workout first.')); return }

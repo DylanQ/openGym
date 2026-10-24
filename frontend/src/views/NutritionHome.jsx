@@ -133,7 +133,7 @@ function QuickAddSheet({ close, day, src }) {
   const numRow = (field, label) => (
     <div className="nutri-field">
       <label className="sect-t">{label}</label>
-      <NumberField nullable value={nums[field]} onChange={v => setNums(n => ({ ...n, [field]: v }))} placeholder="–" />
+      <NumberField className="input" nullable value={nums[field]} onChange={v => setNums(n => ({ ...n, [field]: v }))} placeholder="–" />
     </div>
   )
   return <>

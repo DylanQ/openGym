@@ -52,6 +52,9 @@ import { platformNow } from '../lib/platform-now.js'
 import { pathBefore } from '../lib/nav.js'
 import WatchSettingsPage from './WatchSettings.jsx'
 import NutritionSettingsPage from './NutritionSettings.jsx'
+import { TrainingProfilePage, GymsPage } from './TrainingProfile.jsx'
+import { profileOf } from '../lib/profile.js'
+import { activeGym } from '../lib/gyms.js'
 
 /* Settings (v1.3.11). The root is one screen: an account card, eleven rows that each open a page
    (/settings/<page>), and a search over every row. Rare things live one level further down
@@ -436,6 +439,8 @@ export default function Settings({ page = null, find = null, via = null, entryKe
     look: () => themeLabel + ' · ' + accentLabel(S),
     coach: () => (coachLocal?.mode === 'server' ? t('Your server') : coachLocal?.mode === 'byok' ? t('Your API key') : t('Off')),
     nutrition: () => t('{0} g protein', S.nutritionTargets?.proteinG ?? 180) + (S.nutritionTargets?.calories != null ? ' · ' + S.nutritionTargets.calories + ' kcal' : ''),
+    profile: () => (activeGym(S)?.name || t('No gym set')) + ' · ' + t('{0} days', profileOf(S).daysPerWeek),
+    gyms: () => '',
     data: () => '',
     about: () => 'v' + __APP_VERSION__,
     watch: () => '',
@@ -493,6 +498,8 @@ export default function Settings({ page = null, find = null, via = null, entryKe
   const pages = {
     watch: () => <WatchSettingsPage />,
     nutrition: () => <NutritionSettingsPage />,
+    profile: () => <TrainingProfilePage />,
+    gyms: () => <GymsPage />,
     workout: () => <>
       <Section title={t('Rest')} footer={t('Each exercise can have its own rest too. Set it in the exercise settings of a routine.')}>
         {restRow}

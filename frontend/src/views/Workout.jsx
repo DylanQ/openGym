@@ -38,6 +38,11 @@ import { buildPlannedEntry, plannedConfigOf, builtOutOfProgression } from '../li
 import { routineChangesFromEntry, updateRoutineFromEntry } from '../lib/routines.js'
 import { sessionNoProg, setSessionNoProg, setEntryNoProg, joinSessionNoProg } from '../lib/session-noprog.js'
 import { glyphOf } from '../lib/glyphs.js'
+import TodayEntry from './TodayEntry.jsx'
+import WeekTargets from '../components/WeekTargets.jsx'
+import RirPrompt from '../components/RirPrompt.jsx'
+import { needsOnboarding } from '../lib/profile.js'
+import { prefOf, setPref } from '../lib/ex-pref.js'
 import { markAllSetsDone, sessionHistory } from '../lib/backfill.js'
 import { bindWatchActions } from '../lib/watch-sync.js'
 import { bestSetFor } from '../lib/exercise-history.js'
@@ -66,6 +71,15 @@ function StartChooser() {
   const others = S.routines.filter(r => !idSet.has(r.id))
   return <div className="narrow">
     <div className="hdr"><div><h1>{t('Start workout')}</h1><div className="sub">{t(DAYN[new Date().getDay()])} · {todayRoutines.length ? t('today is {0}', todayName) : t('rest day, but no one’s stopping you')}</div></div></div>
+    {needsOnboarding(S) && <div className="card" style={{ borderColor: 'var(--acc)' }}>
+      <h2 className="accent">{t('First Entry')}</h2>
+      <div className="muted small" style={{ marginBottom: 12 }}>{t('Two minutes of setup — goal, gym, split — and the app composes your workouts from your own numbers from then on.')}</div>
+      <Button variant="primary" icon="sunrise" onClick={() => nav('/first-entry')}>{t('Set up')}</Button>
+    </div>}
+    <TodayEntry />
+    <div style={{ height: 14 }} />
+    <WeekTargets />
+    <div style={{ height: 14 }} />
     {todayRoutines.length > 0 && <div className="card" style={{ borderColor: 'var(--acc)' }}>
       <h2 className="accent">{t("Today's plan")}{todayOvr ? ' · ' + t('rescheduled') : ''}</h2>
       <div className="row between" style={{ marginBottom: 12 }}>
@@ -105,7 +119,7 @@ const RTL_LETTER = /[֐-ࣿיִ-﷿ﹰ-﻿]/
 // enough to turn over, far shorter than the rest the set earns once both sides are held.
 const SWITCH_SIDES_SEC = 10
 
-function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSide, onField, onAddSet, onRemoveSet, onAddWarmup, onRemoveSetAt, onCopySetAt, onStartTimed, onPairPrev, onPairNext, onSetRowRef, onProgressionSettings, onRest, onNoProg, routineUpdate, onSwap, onMoveUp, onMoveDown, canMoveUp, canMoveDown, onRemoveExercise, busy }) {
+function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSide, onField, onRateEffort, onAddSet, onRemoveSet, onAddWarmup, onRemoveSetAt, onCopySetAt, onStartTimed, onPairPrev, onPairNext, onSetRowRef, onProgressionSettings, onRest, onNoProg, routineUpdate, onSwap, onMoveUp, onMoveDown, canMoveUp, canMoveDown, onRemoveExercise, busy }) {
   const S = useStore(s => s.S)
   const update = useStore(s => s.update)
   const working = useUI(s => s.work)
@@ -396,6 +410,18 @@ function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSi
   // The exercise's own rest, or the default it falls back to (lib/supersetFlow.js restSecFor).
   const ownRest = entry.target?.restSec > 0 ? entry.target.restSec : 0
   const restSub = ownRest ? fmtRest(ownRest) : t('Default ({0})', fmtRest(S.restSec))
+  // The standing word on this exercise (lib/ex-pref.js): the same four-way control the
+  // exercise page and the Training Profile carry, one tap from the session.
+  const prefLabel = { more: t('More often'), normal: t('Normal'), less: t('Less often'), never: t('Never again') }[prefOf(S, entry.id)]
+  const openPrefs = () => menuSheet({
+    title: t('Recommendations'),
+    items: [
+      { icon: 'arrowUp', label: t('More often'), on: prefOf(S, entry.id) === 'more', onClick: () => update(s => setPref(s, entry.id, 'more')) },
+      { icon: 'check', label: t('Normal'), on: prefOf(S, entry.id) === 'normal', onClick: () => update(s => setPref(s, entry.id, 'normal')) },
+      { icon: 'arrowDown', label: t('Less often'), on: prefOf(S, entry.id) === 'less', onClick: () => update(s => setPref(s, entry.id, 'less')) },
+      { icon: 'xmark', label: t('Never again'), on: prefOf(S, entry.id) === 'never', onClick: () => update(s => setPref(s, entry.id, 'never')) },
+    ],
+  })
   const openMore = () => menuSheet({
     title: exerciseNameFor(ex),
     titleClass: exerciseNameClass(ex),
@@ -412,6 +438,7 @@ function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSi
       ] },
       { title: t('Settings'), items: [
         onProgressionSettings && { icon: 'slider', label: t('Exercise settings'), sub: guidance ? t(guidance.policyLabel) : t('Sets, reps, rest, progression'), onClick: onProgressionSettings },
+        { icon: 'chart', label: t('Recommendations'), sub: prefLabel, onClick: openPrefs },
         onRest && { icon: 'timer', label: t('Rest timer'), sub: restSub, onClick: onRest },
         plateLoading && { icon: 'plate', label: t('Plate loading'), sub: loadSummary, onClick: () => barWeightSheet(entry.id, cfg) },
         routineUpdate && { icon: 'clipboard', label: t('Update routine'), sub: routineUpdate.sub, onClick: routineUpdate.run },
@@ -766,6 +793,7 @@ function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSi
         <Button size="sm" icon="minus" disabled={entry.sets.length <= setSpanAt(entry.sets, entry.sets.length - 1)[1]} onClick={onRemoveSet}>{t('Remove set')}</Button>
         <Button size="sm" icon="plus" onClick={onAddSet}>{t('Add set')}</Button>
       </div> : <Button size="sm" icon="plus" onClick={onAddSet}>{t('Add set')}</Button>}
+      {!dense && !editing && effortOf(S) !== 'none' && <RirPrompt entry={entry} onRate={onRateEffort} />}
     </div>
   </>
 }
@@ -1154,6 +1182,19 @@ function ActiveWorkout() {
   const done = setsDoneActive(A)
 
   const mutEntry = (idx, fn) => update(s => { fn(s.active.entries[idx]) }, true)
+  // The per-exercise effort answer (fitbod-experience.md B5.2): the prompt's one tap
+  // writes the last work set's effort in the scale the app is set to, and marks the
+  // entry as asked so it never asks twice.
+  const rateEffort = (idx, v) => update(s => {
+    const e = s.active?.entries?.[idx]
+    if (!e) return
+    const work = e.sets.map((row, i) => (isWarmupRow(row) ? -1 : i)).filter(i => i >= 0)
+    const last = work[work.length - 1]
+    if (last == null) return
+    if (effortOf(s) === 'rpe') e.sets[last] = { ...e.sets[last], rpe: Math.max(5, 10 - v) }
+    else e.sets[last] = { ...e.sets[last], rir: v }
+    e.rirPrompt = v
+  }, true)
   // Clearing an optional field drops the key rather than storing null, so a set only carries
   // what was actually logged — in the session, in history and in a backup.
   const setField = (idx, i, field, v) => mutEntry(idx, e => {
@@ -1314,6 +1355,7 @@ function ActiveWorkout() {
     onToggle: (i, onFocusProgress) => toggle(idx, i, undefined, { onFocusProgress }),
     onToggleSide: (i, side, onFocusProgress) => toggle(idx, i, side, { onFocusProgress }),
     onField: (i, f, v) => setField(idx, i, f, v),
+    onRateEffort: v => rateEffort(idx, v),
     onMutateSet: (i, fn) => mutEntry(idx, entry => { entry.sets[i] = fn(entry.sets[i]) }),
     onAddSet: () => addSet(idx),
     onRemoveSet: () => removeSet(idx),

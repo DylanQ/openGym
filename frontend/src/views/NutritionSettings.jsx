@@ -37,13 +37,13 @@ export default function NutritionSettingsPage() {
     <Section title={t('Targets')} footer={t('Protein is the number the section steers by. The calorie target stays empty until you set one — no invented default.')}>
       <Row icon="target" iconTint="var(--protein)" title={t('Protein target')}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <NumberField value={targets.proteinG ?? 180} onChange={v => setTargets({ proteinG: v ?? 180 })} style={{ width: 90 }} />
+          <NumberField className="input" value={targets.proteinG ?? 180} onChange={v => setTargets({ proteinG: v ?? 180 })} style={{ width: 90 }} />
           <span className="muted">{t('g / day')}</span>
         </span>
       </Row>
       <Row icon="flame" iconTint="var(--orange)" title={t('Calorie target')} subtitle={targets.calories == null ? t('Not set') : ''}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <NumberField nullable value={targets.calories ?? null} onChange={v => setTargets({ calories: v })} placeholder="–" style={{ width: 90 }} />
+          <NumberField className="input" nullable value={targets.calories ?? null} onChange={v => setTargets({ calories: v })} placeholder="–" style={{ width: 90 }} />
           <span className="muted">kcal</span>
         </span>
       </Row>

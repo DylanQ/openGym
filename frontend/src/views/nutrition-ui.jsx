@@ -41,6 +41,12 @@ export const MACRO_ROWS = [
  * (from lib/label-parse.js) marks 'check' fields with the amber class — the only fields
  * that draw the eye — and 'missing' fields show an empty input. Every field is nullable:
  * clearing one means "the label didn't say", never zero.
+ *
+ * The NumberFields carry className "input" (the sheets.jsx precedent): a bare NumberField
+ * is an unstyled <input>, and with no color-scheme declared the WebView paints those with
+ * the light UA background — a white box whose var(--label) text is near-white in the dark
+ * theme, invisible until a tap selects it. The .field/.input rule is what ties a field's
+ * background to var(--surface) in every theme, Ledger included.
  */
 export function PerServingForm({ value, onChange, confidence = {} }) {
   const set = (field, v) => onChange({ ...value, perServing: { ...value.perServing, [field]: v } })
@@ -61,13 +67,13 @@ export function PerServingForm({ value, onChange, confidence = {} }) {
       </div>
       <div className={cls('servingsPerContainer')}>
         <label className="sect-t">{t('Servings per container')}</label>
-        <NumberField nullable value={value.servingsPerContainer ?? null}
+        <NumberField className="input" nullable value={value.servingsPerContainer ?? null}
           onChange={v => onChange({ ...value, servingsPerContainer: v })} placeholder="–" />
       </div>
       {MACRO_ROWS.map(([field, label, unit]) => (
         <div key={field} className={cls(field)}>
           <label className="sect-t">{t(label)}{unit ? ` (${unit})` : ''}</label>
-          <NumberField nullable value={value.perServing?.[field] ?? null}
+          <NumberField className="input" nullable value={value.perServing?.[field] ?? null}
             onChange={v => set(field, v)} placeholder="–" />
         </div>
       ))}

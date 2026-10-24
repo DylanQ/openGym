@@ -18,6 +18,10 @@ export const PAGES = {
   // The food side of the app (nutrition-spec.md §6): targets, the saved-foods library and
   // the exports that bridge back to Pip's food logs live on this page.
   nutrition: { title: 'Nutrition', icon: 'flame', tint: 'var(--orange)' },
+  // The Fitbod layer's home (fitbod-experience.md B2/B3): the training profile the
+  // generator reads, and the gyms under it. Gyms hang one level down, like Fine-tuning.
+  profile: { title: 'Training Profile', icon: 'target', tint: 'var(--green)' },
+  gyms: { title: 'Gyms', icon: 'dumbbell', tint: 'var(--indigo)', parent: 'profile' },
   look: { title: 'Look & Home', icon: 'palette', tint: 'var(--purple)' },
   coach: { title: 'AI Coach', icon: 'sparkles', tint: 'var(--green)' },
   watch: { title: 'Apple Watch', icon: 'watch', tint: 'var(--grey)' },
@@ -29,7 +33,7 @@ export const PAGES = {
 export const PAGE_IDS = Object.keys(PAGES)
 
 // The root, top to bottom. Whether a row shows is pageVisible's call.
-export const ROOT_GROUPS = [['workout', 'alerts', 'reminders'], ['plan', 'units', 'equipment', 'nutrition'], ['look', 'coach', 'watch'], ['data', 'about']]
+export const ROOT_GROUPS = [['workout', 'alerts', 'reminders'], ['plan', 'units', 'equipment', 'nutrition', 'profile'], ['look', 'coach', 'watch'], ['data', 'about']]
 
 /**
  * Whether a page exists for this device and profile. Reminders need a push server (signed in) or
@@ -116,6 +120,13 @@ export const SEARCH = [
   { page: 'nutrition', title: 'Protein target', icon: 'target', tint: 'var(--protein)', kw: 'protein food eating grams goal' },
   { page: 'nutrition', title: 'Calorie target', icon: 'flame', tint: 'var(--orange)', kw: 'calories kcal food eating goal' },
   { page: 'nutrition', title: 'Saved foods', icon: 'clipboard', tint: 'var(--teal)', kw: 'food library label foods staples' },
+  // Training Profile & Gyms
+  { page: 'profile', title: 'Days per week', icon: 'calendar', tint: 'var(--green)', kw: 'training days frequency schedule split goal generator' },
+  { page: 'profile', title: 'Warm-up sets', icon: 'sunrise', tint: 'var(--yellow)', kw: 'warmup warm-up ramp generator sets' },
+  { page: 'profile', title: 'Supersets', icon: 'link', tint: 'var(--blue)', kw: 'superset pairs generator' },
+  { page: 'profile', title: 'Gyms', icon: 'dumbbell', tint: 'var(--indigo)', kw: 'gym planet fitness equipment filter dumbbells places' },
+  { page: 'profile', title: 'Redo setup', icon: 'sunrise', tint: 'var(--yellow)', kw: 'onboarding wizard first entry setup redo' },
+  { page: 'gyms', title: 'Add a gym', icon: 'plusCircle', tint: 'var(--green)', kw: 'gym add place equipment planet fitness' },
   // Look & Home
   { page: 'look', title: 'Theme', icon: 'moon', tint: 'var(--indigo)', kw: 'dark mode light mode theme appearance night', opts: ['Dark', 'Light', 'System'] },
   { page: 'look', title: 'Accent color', icon: 'palette', tint: 'var(--purple)', kw: 'color colour accent tint custom own picker hex rgb', opts: [...Object.values(ACCENT_NAMES), 'Your own color'], tkw: () => t('custom color picker') },

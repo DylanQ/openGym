@@ -4,6 +4,8 @@
 // a new function each time, which React reads as a different type and rebuilds from scratch.
 import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import TabBar from './TabBar.jsx'
 import { DEF, useStore } from '../store/useStore.js'
@@ -78,6 +80,28 @@ describe('the connection dot on Home', () => {
       expect(home().querySelector('.tab-dot')).toBeNull()
       expect(home().getAttribute('aria-label')).toBeNull()
     } finally { useStore.setState({ sync: original }) }
+  })
+})
+
+// Six tabs at phone widths (field report after Nutrition joined the bar): happy-dom has no
+// layout engine, so the guarantees are read out of index.css itself, the list-columns.test.js
+// way. Without min-width:0 a flex item's floor is its label's min-content — Exercises and
+// Nutrition set their tabs' widths, the row outgrew the screen and the end tabs spilled.
+// The label rule is the second half: a label too wide for its sixth truncates in place.
+describe('the six-tab bar at phone widths', () => {
+  const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+  const rule = sel => css.match(new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\{([^}]*)\\}'))?.[1] || ''
+
+  it('lets every tab shrink to its equal sixth of the bar', () => {
+    expect(rule('#tabbar button')).toContain('min-width:0')
+    expect(rule('#tabbar button')).toContain('flex:1')
+  })
+
+  it('keeps an over-long label inside its own tab', () => {
+    const label = rule('#tabbar button>span:last-child')
+    expect(label).toContain('white-space:nowrap')
+    expect(label).toContain('overflow:hidden')
+    expect(label).toContain('text-overflow:ellipsis')
   })
 })
 
