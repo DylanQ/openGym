@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Graft scaffolding (ours, not BitChord's): KMP android library manifest.
+     The namespace comes from build.gradle; the module declares nothing. -->
+<manifest />
