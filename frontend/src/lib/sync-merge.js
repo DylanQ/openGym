@@ -11,7 +11,8 @@
  *     the copy that changed it last by its own stamp in `edited` (stampEdits; `week`, `dayPlan`,
  *     exNotes and barWeights per day or per exercise), from the copy with the newer `_ts` when
  *     neither side stamped it or on a tie
- *   - equipProfiles, gymCards: union by id; of an id that both have, field by field as below
+ *   - equipProfiles, gymCards, gyms (this fork's locations, lib/gyms.js): union by id; of
+ *     an id that both have, field by field as below
  *   - foods, foodLog (this fork's Nutrition section, lib/nutrition.js): union by id like
  *     gymCards; of an id both have, field by field as below. An entry's `src` provenance is
  *     just a field here — the immutability rule is the writers' (lib/nutrition.js), not the
@@ -406,7 +407,7 @@ const bodyweightKey = e => `${e?.d}|${e?.t ?? ''}`
 const RESET_LISTS = {
   workouts: workoutKey, routines: x => x?.id, customEx: x => x?.id, bodyweight: bodyweightKey,
   measurements: bodyweightKey, gymCards: x => x?.id, equipProfiles: x => x?.id, favEx: x => x,
-  foods: x => x?.id, foodLog: x => x?.id,
+  foods: x => x?.id, foodLog: x => x?.id, gyms: x => x?.id,
 }
 const RESET_MAPS = ['exNotes', 'barWeights', ...STAMPED_MAPS]
 /** An entry's name in resetIds: a workout's id (or day and start), a weigh-in's day and time, … */
@@ -504,7 +505,7 @@ export function sinceReset(S, at, ids) {
 const DEL_LISTS = {
   workouts: workoutKey, routines: x => x?.id, customEx: x => x?.id, bodyweight: e => e?.d,
   measurements: e => e?.d, gymCards: x => x?.id, equipProfiles: x => x?.id, favEx: x => x,
-  foods: x => x?.id, foodLog: x => x?.id,
+  foods: x => x?.id, foodLog: x => x?.id, gyms: x => x?.id,
 }
 // When an entry was last edited, to hold against a removal. Entries with no time of their own
 // (favourites, and cards and profiles saved before they were stamped) count as older than any
@@ -514,6 +515,7 @@ const DEL_TIME = {
   bodyweight: e => Number(e?.t) || 0, measurements: e => Number(e?.t) || 0,
   gymCards: x => Number(x?._ts) || 0, equipProfiles: x => Number(x?._ts) || 0,
   foods: x => Number(x?._ts) || 0, foodLog: x => Number(x?._ts) || 0,
+  gyms: x => Number(x?._ts) || 0,
 }
 // Per field, the most stamps kept; past it the oldest go first.
 export const DELETED_MAX = 5000
@@ -620,7 +622,7 @@ function applyDeletions(S, deleted) {
 const OWN_MERGE = new Set([
   '_ts', '_rev', '_wid', '_wids', '_unstamped', '_prior', 'active', 'unit', 'unitSet', 'resetAt', 'resetIds', 'deleted', 'edited', 'undone', 'routineOrder',
   'workouts', 'routines', 'customEx', 'equipProfiles', 'gymCards', 'bodyweight', 'measurements', 'favEx',
-  'foods', 'foodLog',
+  'foods', 'foodLog', 'gyms',
   'exWeights', 'balanceOverrides', 'loadKind', 'plates', 'dbLoad', 'dumbbells', 'dayNotes', 'dayPhotos',
 ])
 // Stamped per key instead of whole: one day of the plan, one exercise's note or bar.
@@ -799,7 +801,7 @@ export function mergeStates(a0, b0, { prefer } = {}) {
     }
   }
   out.workouts.sort(byDayStart)
-  for (const f of ['routines', 'customEx', 'equipProfiles', 'gymCards', 'foods', 'foodLog']) {
+  for (const f of ['routines', 'customEx', 'equipProfiles', 'gymCards', 'foods', 'foodLog', 'gyms']) {
     if (list(n[f]).length || list(o[f]).length) out[f] = (f === 'routines' ? unionByNeighbours : unionById)(n[f], o[f]).map(clone)
   }
   // The routines in the order chosen last (`edited.routineOrder`), the newer copy's without a
@@ -817,7 +819,7 @@ export function mergeStates(a0, b0, { prefer } = {}) {
   // are both kept. The same for a custom exercise (a photo added on one device survives a rename
   // on the other), an equipment profile and a gym card.
   if (!prefer) {
-    for (const f of ['routines', 'customEx', 'equipProfiles', 'gymCards', 'foods', 'foodLog']) {
+    for (const f of ['routines', 'customEx', 'equipProfiles', 'gymCards', 'foods', 'foodLog', 'gyms']) {
       if (!out[f]) continue
       const other = new Map(list(o[f]).filter(x => x?.id != null).map(x => [x.id, x]))
       out[f] = out[f].map(x => {
@@ -962,7 +964,7 @@ export function stampReplace(next, others = [], now = Date.now()) {
   const known = {}
   for (const f of Object.keys(DEL_LISTS)) known[f] = others.flatMap(o => list(o?.[f])).filter(x => x != null)
   stampDeletions(known, next, now)
-  for (const f of ['workouts', 'routines', 'customEx', 'equipProfiles', 'gymCards', 'foods', 'foodLog']) {
+  for (const f of ['workouts', 'routines', 'customEx', 'equipProfiles', 'gymCards', 'foods', 'foodLog', 'gyms']) {
     const versions = new Map()
     for (const o of others) for (const x of list(o?.[f])) if (x && typeof x === 'object' && x.id != null) versions.set(x.id, [...(versions.get(x.id) || []), x])
     for (const x of list(next[f])) {
@@ -1010,7 +1012,7 @@ export function highestStamp(S) {
   see(S.resetAt)
   if (isMap(S.edited)) for (const v of Object.values(S.edited)) see(v)
   if (isMap(S.deleted)) for (const f of Object.values(S.deleted)) if (isMap(f)) for (const v of Object.values(f)) see(v)
-  for (const f of ['workouts', 'routines', 'customEx', 'equipProfiles', 'gymCards', 'foods', 'foodLog']) {
+  for (const f of ['workouts', 'routines', 'customEx', 'equipProfiles', 'gymCards', 'foods', 'foodLog', 'gyms']) {
     for (const x of list(S[f])) {
       if (!x || typeof x !== 'object') continue
       see(x._ts)
@@ -1067,6 +1069,7 @@ export function stampChange(prev, next, wall = Date.now()) {
   stampCustomEx(prev?.customEx, next.customEx, now)
   stampEntries(prev?.equipProfiles, next.equipProfiles, now)
   stampEntries(prev?.gymCards, next.gymCards, now)
+  stampEntries(prev?.gyms, next.gyms, now)
   stampEntries(prev?.foods, next.foods, now)
   stampEntries(prev?.foodLog, next.foodLog, now)
   stampDeletions(prev, next, now)
@@ -1135,7 +1138,7 @@ export function localExtras(local, server) {
   const keysNew = f => Object.entries(isMap(local?.[f]) ? local[f] : {})
     .filter(([k, v]) => v != null && !(Array.isArray(v) && !v.length) && !(isMap(server?.[f]) && k in server[f])).length
   const measured = new Set(list(server?.measurements).map(e => e?.d))
-  const setup = ['gymCards', 'equipProfiles'].reduce((n, f) => n + list(local?.[f]).filter(x => x && x.id != null && !ids(f).has(x.id)).length, 0) +
+  const setup = ['gymCards', 'equipProfiles', 'gyms'].reduce((n, f) => n + list(local?.[f]).filter(x => x && x.id != null && !ids(f).has(x.id)).length, 0) +
     list(local?.measurements).filter(e => e && e.d != null && !measured.has(e.d)).length +
     Object.entries(isMap(local?.dayNotes) ? local.dayNotes : {}).filter(([k, v]) => readNote(v) && !readNote(server?.dayNotes?.[k])).length +
     keysNew('week') + keysNew('dayPlan') + keysNew('exNotes')
