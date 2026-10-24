@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MusicCore module manifest (spike skeleton).
+
+  The engine phase adds the media playback service to the *app* manifest, not here:
+  BitChord's PlaybackService (a Media3 MediaSessionService) plus
+  FOREGROUND_SERVICE_MEDIA_PLAYBACK / FOREGROUND_SERVICE permissions and the
+  media-button receiver, merged alongside the app's own components.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" />

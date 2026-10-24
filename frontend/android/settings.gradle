@@ -3,6 +3,16 @@ include ':capacitor-cordova-android-plugins'
 project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
 
 apply from: 'capacitor.settings.gradle'
+
+// MusicCore: the Capacitor plugin fronting the grafted BitChord playback engine
+// (spike skeleton — the engine itself lands in the music phase). See
+// music-core/README.md.
+include ':music-core'
+project(':music-core').projectDir = new File('./music-core/')
+// MusicShared: BitChord's :shared KMP module grafted as a sibling of
+// :music-core (build graft phase — sources only, no engine behaviour yet).
+include ':music-shared'
+project(':music-shared').projectDir = new File('./music-shared/')
 // The Play asset packs of the animations, only while the release machine builds the Play bundle
 // (scripts/android/make-asset-packs.mjs writes this file and the modules; never committed).
 if (file('asset-packs.settings.gradle').exists()) {

@@ -9,6 +9,16 @@ buildscript {
     dependencies {
         classpath 'com.android.tools.build:gradle:8.13.0'
         classpath 'com.google.gms:google-services:4.4.4'
+        // The Kotlin Gradle plugin lives on the ROOT classpath as well as in
+        // the music modules' own buildscripts, deliberately: with a Kotlin
+        // Multiplatform module in the build, KGP classes must come from one
+        // classloader realm shared with AGP. When KGP is only on a module's
+        // own classpath, AGP 8.13 registers the org.jetbrains.kotlin.platform.type
+        // attribute as a String while KGP registers it as its enum, and
+        // configuring the KMP module fails with "Cannot have two attributes
+        // with the same name but different types". One realm, one schema.
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.20'
+        classpath 'org.jetbrains.kotlin:kotlin-serialization:2.3.20'
 
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
@@ -21,6 +31,27 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        // JitPack: InnerTubeX and NewPipeExtractor (the BitChord graft's
+        // stream-resolution libraries) are published only there. BitChord
+        // declares this once, centrally, in its settings file; this project's
+        // equivalent central place is here.
+        maven { url 'https://jitpack.io' }
+    }
+
+    // AGP 8.13 addresses SDK platforms by major.minor ("android-37.0" is the
+    // only API-37 platform Google ships), and a module that sets compileSdk 37
+    // without pinning the minor fails with "Failed to find target with hash
+    // string 'android-37'". variables.gradle puts every module on 37, so the
+    // minor is pinned centrally here: 0, the base 37.0 platform. Registered
+    // from the root script, this afterEvaluate runs before AGP's own (the
+    // plugin registers its when the module's script applies it, later), so
+    // the pin is in place before any variant is created.
+    afterEvaluate {
+        def androidExt = extensions.findByName('android')
+        if (androidExt != null && androidExt.hasProperty('compileSdkMinor')
+                && androidExt.compileSdkMinor == null) {
+            androidExt.compileSdkMinor = 0
+        }
     }
 }
 

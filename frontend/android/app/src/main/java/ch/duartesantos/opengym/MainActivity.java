@@ -25,6 +25,8 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(HealthConnectPlugin.class);
         registerPlugin(ChannelPlugin.class);
+        // MusicCore: BitChord engine bridge (music-core module; engine port pending).
+        registerPlugin(ch.duartesantos.opengym.music.MusicCorePlugin.class);
         FlavorPlugins.register(this);
         registerPlugin(PrintPlugin.class);
         registerPlugin(RestAlertPlugin.class);

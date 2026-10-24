@@ -1,6 +1,9 @@
 ext {
-    minSdkVersion = 24
-    compileSdkVersion = 36
+    // minSdk 26 / compileSdk 37 are forced by the BitChord graft: InnerTubeX's
+    // AAR requires compiling against 37 and does not run below 26. targetSdk
+    // (runtime behaviour) stays 36, as upstream BitChord has it.
+    minSdkVersion = 26
+    compileSdkVersion = 37
     targetSdkVersion = 36
     androidxActivityVersion = '1.11.0'
     androidxAppCompatVersion = '1.7.1'
