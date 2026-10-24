@@ -25,6 +25,11 @@ export function convertBodyWeight(value, from, to) {
   return Math.round((to === 'lb' ? v * LB_PER_KG : v / LB_PER_KG) * 10) / 10
 }
 
+/** A single body weight expressed in kg (the First Entry stores its weigh-in canonically). */
+export function toKg(value, from = 'kg') {
+  return convertBodyWeight(value, from, 'kg')
+}
+
 const convSet = (set, from, to) => {
   if (!set || typeof set !== 'object') return set
   const out = { ...set }
