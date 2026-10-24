@@ -94,6 +94,14 @@ export const DEF = {
   // Body measurements (#82): one check-in per day, values in cm whatever the weight unit
   // (lib/measurements.js); merged across devices like weigh-ins (lib/sync-merge.js).
   measurements: [], measurementEnabled: null, customMeasurements: [],
+  // Nutrition (this fork, nutrition-spec.md; lib/nutrition.js): the saved-food label
+  // library, the day log of what was eaten, and the targets its home screen reads. Entries
+  // are snapshots carrying an immutable `src` provenance ('label' | 'manual' | 'estimate' |
+  // 'import'), so verified numbers and guesses never mix silently. They sync and back up
+  // like everything else (lib/sync-merge.js unions them by id). The calorie target defaults
+  // to null on purpose — Dylan has never settled one (see the spec) — so the UI shows the
+  // day's calorie total and a target only if he sets one.
+  foods: [], foodLog: [], nutritionTargets: { proteinG: 180, calories: null },
   queue: null,   // a planner's floating week (lib/queue.js) — via the API, or by this rotation feature (below)
   // The in-app rotation's reusable definition — { id, sequence, label } (lib/rotation.js). Never
   // a live queue: it only ever feeds `queue`, and `queue.rotationId` says the pass is managed here.

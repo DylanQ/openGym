@@ -12,6 +12,10 @@
  *     exNotes and barWeights per day or per exercise), from the copy with the newer `_ts` when
  *     neither side stamped it or on a tie
  *   - equipProfiles, gymCards: union by id; of an id that both have, field by field as below
+ *   - foods, foodLog (this fork's Nutrition section, lib/nutrition.js): union by id like
+ *     gymCards; of an id both have, field by field as below. An entry's `src` provenance is
+ *     just a field here — the immutability rule is the writers' (lib/nutrition.js), not the
+ *     merge's.
  *   - workouts, routines, customEx, equipProfiles, gymCards: of an id that both have, each field
  *     from the side that changed it last by its own stamp (`_f`, stampEntry / mergeEntry), the
  *     version edited last for every field neither side stamped
@@ -402,6 +406,7 @@ const bodyweightKey = e => `${e?.d}|${e?.t ?? ''}`
 const RESET_LISTS = {
   workouts: workoutKey, routines: x => x?.id, customEx: x => x?.id, bodyweight: bodyweightKey,
   measurements: bodyweightKey, gymCards: x => x?.id, equipProfiles: x => x?.id, favEx: x => x,
+  foods: x => x?.id, foodLog: x => x?.id,
 }
 const RESET_MAPS = ['exNotes', 'barWeights', ...STAMPED_MAPS]
 /** An entry's name in resetIds: a workout's id (or day and start), a weigh-in's day and time, … */
@@ -488,7 +493,7 @@ export function sinceReset(S, at, ids) {
 // ---- Deletions (`deleted`) ------------------------------------------------------------------
 //
 //   S.deleted = { workouts: { <key>: at }, routines: {…}, customEx, bodyweight, gymCards,
-//                 equipProfiles, favEx }
+//                 equipProfiles, favEx, foods, foodLog }
 //
 // A positive `at` is when the entry was removed on some device; a negative one (-at) is when it
 // was added back after such a removal (a favourite starred again). The store writes them on every
@@ -499,6 +504,7 @@ export function sinceReset(S, at, ids) {
 const DEL_LISTS = {
   workouts: workoutKey, routines: x => x?.id, customEx: x => x?.id, bodyweight: e => e?.d,
   measurements: e => e?.d, gymCards: x => x?.id, equipProfiles: x => x?.id, favEx: x => x,
+  foods: x => x?.id, foodLog: x => x?.id,
 }
 // When an entry was last edited, to hold against a removal. Entries with no time of their own
 // (favourites, and cards and profiles saved before they were stamped) count as older than any
@@ -507,6 +513,7 @@ const DEL_TIME = {
   workouts: workoutTime, routines: x => Number(x?._ts) || 0, customEx: x => Number(x?._ts) || 0,
   bodyweight: e => Number(e?.t) || 0, measurements: e => Number(e?.t) || 0,
   gymCards: x => Number(x?._ts) || 0, equipProfiles: x => Number(x?._ts) || 0,
+  foods: x => Number(x?._ts) || 0, foodLog: x => Number(x?._ts) || 0,
 }
 // Per field, the most stamps kept; past it the oldest go first.
 export const DELETED_MAX = 5000
@@ -613,6 +620,7 @@ function applyDeletions(S, deleted) {
 const OWN_MERGE = new Set([
   '_ts', '_rev', '_wid', '_wids', '_unstamped', '_prior', 'active', 'unit', 'unitSet', 'resetAt', 'resetIds', 'deleted', 'edited', 'undone', 'routineOrder',
   'workouts', 'routines', 'customEx', 'equipProfiles', 'gymCards', 'bodyweight', 'measurements', 'favEx',
+  'foods', 'foodLog',
   'exWeights', 'balanceOverrides', 'loadKind', 'plates', 'dbLoad', 'dumbbells', 'dayNotes', 'dayPhotos',
 ])
 // Stamped per key instead of whole: one day of the plan, one exercise's note or bar.
@@ -791,7 +799,7 @@ export function mergeStates(a0, b0, { prefer } = {}) {
     }
   }
   out.workouts.sort(byDayStart)
-  for (const f of ['routines', 'customEx', 'equipProfiles', 'gymCards']) {
+  for (const f of ['routines', 'customEx', 'equipProfiles', 'gymCards', 'foods', 'foodLog']) {
     if (list(n[f]).length || list(o[f]).length) out[f] = (f === 'routines' ? unionByNeighbours : unionById)(n[f], o[f]).map(clone)
   }
   // The routines in the order chosen last (`edited.routineOrder`), the newer copy's without a
@@ -809,7 +817,7 @@ export function mergeStates(a0, b0, { prefer } = {}) {
   // are both kept. The same for a custom exercise (a photo added on one device survives a rename
   // on the other), an equipment profile and a gym card.
   if (!prefer) {
-    for (const f of ['routines', 'customEx', 'equipProfiles', 'gymCards']) {
+    for (const f of ['routines', 'customEx', 'equipProfiles', 'gymCards', 'foods', 'foodLog']) {
       if (!out[f]) continue
       const other = new Map(list(o[f]).filter(x => x?.id != null).map(x => [x.id, x]))
       out[f] = out[f].map(x => {
@@ -954,7 +962,7 @@ export function stampReplace(next, others = [], now = Date.now()) {
   const known = {}
   for (const f of Object.keys(DEL_LISTS)) known[f] = others.flatMap(o => list(o?.[f])).filter(x => x != null)
   stampDeletions(known, next, now)
-  for (const f of ['workouts', 'routines', 'customEx', 'equipProfiles', 'gymCards']) {
+  for (const f of ['workouts', 'routines', 'customEx', 'equipProfiles', 'gymCards', 'foods', 'foodLog']) {
     const versions = new Map()
     for (const o of others) for (const x of list(o?.[f])) if (x && typeof x === 'object' && x.id != null) versions.set(x.id, [...(versions.get(x.id) || []), x])
     for (const x of list(next[f])) {
@@ -1002,7 +1010,7 @@ export function highestStamp(S) {
   see(S.resetAt)
   if (isMap(S.edited)) for (const v of Object.values(S.edited)) see(v)
   if (isMap(S.deleted)) for (const f of Object.values(S.deleted)) if (isMap(f)) for (const v of Object.values(f)) see(v)
-  for (const f of ['workouts', 'routines', 'customEx', 'equipProfiles', 'gymCards']) {
+  for (const f of ['workouts', 'routines', 'customEx', 'equipProfiles', 'gymCards', 'foods', 'foodLog']) {
     for (const x of list(S[f])) {
       if (!x || typeof x !== 'object') continue
       see(x._ts)
@@ -1059,6 +1067,8 @@ export function stampChange(prev, next, wall = Date.now()) {
   stampCustomEx(prev?.customEx, next.customEx, now)
   stampEntries(prev?.equipProfiles, next.equipProfiles, now)
   stampEntries(prev?.gymCards, next.gymCards, now)
+  stampEntries(prev?.foods, next.foods, now)
+  stampEntries(prev?.foodLog, next.foodLog, now)
   stampDeletions(prev, next, now)
   stampEdits(prev, next, now)
   return now

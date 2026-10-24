@@ -56,6 +56,11 @@ import CoachChat from './views/CoachChat.jsx'
 import Measurements from './views/Measurements.jsx'
 import CoachIntake from './views/CoachIntake.jsx'
 import CoachSetup from './views/CoachSetup.jsx'
+import NutritionHome from './views/NutritionHome.jsx'
+import NutritionScan, { NutritionScanConfirm } from './views/NutritionScan.jsx'
+import NutritionServings from './views/NutritionServings.jsx'
+import NutritionFoods from './views/NutritionFoods.jsx'
+import NutritionHistory from './views/NutritionHistory.jsx'
 
 // last known scrollY per route, so back-navigation can put the page where it was
 const scrollPositions = new Map()
@@ -260,6 +265,14 @@ function Shell() {
       <Route path="/structural-balance" element={<StructuralBalance />} />
       <Route path="/progress-photos" element={<ProgressPhotos />} />
       <Route path="/measurements" element={<Measurements />} />
+      {/* Nutrition (nutrition-spec.md §6): the day log, the scan → confirm flow, the
+          servings flow, the saved-foods library and the history rollup. */}
+      <Route path="/nutrition" element={<NutritionHome />} />
+      <Route path="/nutrition/scan" element={<NutritionScan />} />
+      <Route path="/nutrition/confirm" element={<NutritionScanConfirm />} />
+      <Route path="/nutrition/servings" element={<NutritionServings />} />
+      <Route path="/nutrition/foods" element={<NutritionFoods />} />
+      <Route path="/nutrition/history" element={<NutritionHistory />} />
       <Route path="/settings" element={<SettingsRoute />} />
       <Route path="/settings/:page" element={<SettingsRoute />} />
       {/* The Coach screens gate themselves on the instance config; the routes exist

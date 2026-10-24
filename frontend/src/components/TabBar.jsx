@@ -61,6 +61,9 @@ export default function TabBar({ onStart }) {
       </button>
       <Tab active={on('stats')} icon="chart" label={t('Stats')} onClick={() => nav('/stats')} />
       <Tab active={on('library')} icon="dumbbell" label={t('Exercises')} onClick={() => nav('/library')} />
+      {/* The food side (nutrition-spec.md §6): today's log and the protein bar live one tap
+          away, same as training. */}
+      <Tab active={on('nutrition')} icon="flame" label={t('Nutrition')} onClick={() => nav('/nutrition')} />
     </nav>
   )
 }
