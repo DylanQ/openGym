@@ -216,7 +216,11 @@
 .nutri-photo{display:block;width:100%;max-height:300px;object-fit:contain;border:1.5px solid var(--ink);border-radius:4px;background:var(--paper-2);margin:6px 0 12px}
 .nutri-note{border:1.5px solid var(--ochre);color:var(--ochre);border-radius:4px;padding:8px 10px;font-size:13px;margin:0 0 10px;line-height:1.45}
 .nutri-servings-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0}
-.nutri-servings{width:76px;text-align:center}
+/* The stepper's free-type box is a field in its own right, not a bare <input>: unstyled,
+   the WebView paints it with the light UA background and the theme's text colour all but
+   disappears on it (the confirm screen's white boxes). Surface + label, like .field. */
+.nutri-servings{width:76px;text-align:center;background:var(--surface);color:var(--label);border:none;border-radius:var(--r);padding:10px 6px;font-size:16px;outline:none}
+.nutri-servings:focus{box-shadow:inset 0 0 0 2px var(--acc)}
 .nutri-stepper{display:inline-flex;align-items:center;gap:8px}
 .nutri-scaled{font-family:var(--font-mono);font-size:16px;font-weight:600;margin:10px 0 2px}
 .nutri-time{width:130px}
@@ -227,6 +231,77 @@
 .nutri-sortrow{display:flex;align-items:center;gap:8px;margin:10px 0 4px}
 .nutri-week{display:flex;gap:10px;padding:16px;margin-bottom:14px}
 .nutri-week-col{flex:1;display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+
+/* ------------------------------------------------- the Fitbod layer (fitbod-experience.md) -- */
+/* Today's Entry, the First Entry walk, the week targets and the effort prompt. Same
+   tokens as everywhere else, so the Ledger theme skins them with the rest of the app. */
+.chiprow{display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px}
+.chiprow.wrap{flex-wrap:wrap;overflow:visible}
+.eyebrow{font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--acc)}
+.slot{display:inline-block;width:14px;height:14px;border:1.5px solid var(--label);border-radius:3px;opacity:.45}
+.slot.punched{background:var(--acc);border-color:var(--acc);opacity:1}
+.slot.now{opacity:1;box-shadow:0 0 0 2px color-mix(in srgb,var(--acc) 45%,transparent)}
+
+.todayentry{margin-top:4px}
+.today-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.today-title{font-size:24px;line-height:1.15}
+.today-chips{margin-top:10px}
+.today-meta{font-size:13px;color:var(--label-2,inherit);opacity:.85;margin-top:8px}
+.today-muscles{margin-top:8px}
+.today-note{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;border-color:var(--yellow)}
+.today-card{margin-top:12px}
+.today-card-head{display:flex;align-items:center;gap:10px}
+.today-card-head .thumb,.today-card-head img{width:44px;height:44px;border-radius:8px;object-fit:cover;flex:none}
+.today-card-names{flex:1;min-width:0}
+.today-rx{font-size:14px;margin-top:10px}
+.today-why{font-size:13.5px;margin-top:6px;padding:8px 10px;border-radius:8px;background:color-mix(in srgb,var(--acc) 10%,transparent)}
+.today-stamps{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center}
+.today-steppers{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px}
+.today-add{display:block;width:100%;margin-top:12px;padding:13px;border:1.5px dashed var(--sep);border-radius:var(--r);color:var(--label);background:none;font-weight:600}
+.today-recovery{margin-top:12px}
+.today-bars{margin-top:10px;display:flex;flex-direction:column;gap:7px}
+.today-bar{display:flex;align-items:center;gap:10px;font-size:13.5px}
+.today-bar-name{width:96px;flex:none}
+.today-bar-track{flex:1;height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden}
+.today-bar-fill{display:block;height:100%;border-radius:4px}
+.today-bar-fill.fresh{background:var(--green)}
+.today-bar-fill.recovering{background:var(--yellow)}
+.today-bar-fill.fatigued{background:var(--red)}
+.today-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px}
+.today-legend .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-inline-end:5px}
+.today-legend .dot.fresh{background:var(--green)}
+.today-legend .dot.recovering{background:var(--yellow)}
+.today-legend .dot.fatigued{background:var(--red)}
+.today-actions{margin-top:14px;gap:8px;flex-wrap:wrap}
+.today-actions .btn{flex:1 1 auto}
+
+.weektargets{margin-top:0}
+.weektargets-head{justify-content:space-between;align-items:center}
+.weekstreak{display:inline-flex;align-items:center;gap:8px;font-size:12px}
+.weekstreak-slots{display:inline-flex;gap:3px}
+.weekstreak-slots .slot{width:10px;height:10px}
+.weekrows{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.weekrow{display:flex;align-items:center;gap:10px;font-size:13.5px}
+.weekrow-name{width:96px;flex:none}
+.weekrow-bar{flex:1;display:flex;gap:2px}
+.weekrow-bar .segcell{flex:1;height:8px;border-radius:2px;background:var(--surface-2)}
+.weekrow-bar .segcell.on{background:var(--acc)}
+.weekrow-nums{font-size:12.5px}
+
+.wizard-progress{display:flex;gap:5px;margin:6px 0 18px}
+.wizard-t{font-size:26px;line-height:1.2;margin-bottom:8px}
+.wizard-field{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--sep);font-weight:600}
+.wizard-field .num{margin-inline-start:auto}
+.wizard-field input.num{background:var(--surface);color:var(--label);border:none;border-radius:var(--r);padding:10px;width:110px;text-align:center;font-size:16px}
+.wizard-field input.num:focus{box-shadow:inset 0 0 0 2px var(--acc)}
+.wizard-nav{margin-top:22px;gap:10px}
+.wizard-nav .btn{flex:1}
+
+.rirprompt{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding:9px 11px;border-radius:8px;background:color-mix(in srgb,var(--acc) 10%,transparent)}
+.rirprompt-q{font-size:13.5px;font-weight:600}
+.rirprompt-chips{display:inline-flex;gap:6px}
+.rirprompt-chips .chip{min-width:38px;justify-content:center}
+.recovery-adj{margin:0 0 12px}
 
 /* ---------------------------------------------------------------- reset -- */
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -525,9 +600,17 @@ h4.sec{
 }
 :root[data-theme="light"] #tabbar{background:rgba(249,249,251,.94)}
 #tabbar button{
-  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;
   color:var(--label-3);font-size:10px;font-weight:500;letter-spacing:.005em;padding-top:3px;
   transition:color var(--fast);
+}
+/* Six tabs share the bar since Nutrition joined: a flex item's floor is its min-content,
+   so the widest labels (Exercises, Nutrition — wider still under Android's font scaling
+   and in the Ledger face) set their tab's width, the row outgrew the screen and the end
+   tabs spilled past the edges. min-width:0 above lets the sixths stay equal, and a label
+   that still does not fit ellipsises inside its own tab instead of over its neighbours. */
+#tabbar button>span:last-child{
+  width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 /* The inactive tint is semi-transparent, so wherever two strokes cross inside an
    icon (the calendar's hangers over its frame, the divider's caps on its sides)
