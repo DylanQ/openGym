@@ -186,6 +186,47 @@
    estimate tone, until a logged best replaces it on the row. */
 .tag.seed{background:none;border:1px dashed var(--estimate);color:var(--estimate);font-family:var(--font-mono);text-transform:none}
 .mygym-setup .tt{font-size:17px;font-weight:600}
+/* Nutrition (nutrition-spec.md §5–§6): provenance stamps extend the set above — a
+   verified label is the vermilion stamp, an estimate the tan one, an import the info
+   blue; manual numbers are the unmarked default. The word is the message, the colour
+   only underlines it. */
+.stamp-verified{color:var(--stamp)}
+:root:not([data-theme="light"]):not([data-theme="ledger"]) .stamp-verified{color:var(--stamp-hot)}
+.stamp-estimate{color:var(--estimate)}
+.stamp-import{color:var(--info)}
+.nutri-daynav{display:flex;align-items:center;justify-content:space-between;margin:4px 0 12px}
+.nutri-daylabel{font-family:var(--font-mono);font-size:15px;font-weight:600;background:none;border:none;color:var(--label);padding:8px 12px}
+.nutri-protein{padding:16px;margin-bottom:14px}
+.nutri-protein-nums{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.nutri-big{font-family:var(--font-mono);font-size:34px;font-weight:700;line-height:1}
+.nutri-left{margin-left:auto;font-family:var(--font-mono);font-size:13px;color:var(--protein);font-weight:600}
+.nutri-bar{height:10px;border:1.5px solid var(--ink);border-radius:2px;margin-top:10px;overflow:hidden;background:var(--paper-2)}
+.nutri-bar>div{height:100%;background:var(--protein)}
+.nutri-totals{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-mono);font-size:13px}
+.nutri-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.nutri-actions .btn{flex:1 1 auto}
+.nutri-entry{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--sep);padding:10px 2px;color:var(--label);cursor:pointer}
+.nutri-entry:last-child{border-bottom:none}
+.nutri-entry-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.nutri-entry-name{font-weight:600;font-size:15px}
+.nutri-day-protein{font-family:var(--font-mono);font-weight:600;display:inline-flex;align-items:center;gap:6px}
+.nutri-day-protein svg{color:var(--protein)}
+.nutri-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+.nutri-field.check input,.nutri-field.check .field{border-color:var(--ochre);box-shadow:0 0 0 1px var(--ochre)}
+.nutri-photo{display:block;width:100%;max-height:300px;object-fit:contain;border:1.5px solid var(--ink);border-radius:4px;background:var(--paper-2);margin:6px 0 12px}
+.nutri-note{border:1.5px solid var(--ochre);color:var(--ochre);border-radius:4px;padding:8px 10px;font-size:13px;margin:0 0 10px;line-height:1.45}
+.nutri-servings-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0}
+.nutri-servings{width:76px;text-align:center}
+.nutri-stepper{display:inline-flex;align-items:center;gap:8px}
+.nutri-scaled{font-family:var(--font-mono);font-size:16px;font-weight:600;margin:10px 0 2px}
+.nutri-time{width:130px}
+.nutri-food-head{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.nutri-food-name{font-size:19px;font-weight:700;flex:1;min-width:0}
+.nutri-foodrow{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--sep);padding:8px 0}
+.nutri-food-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;text-align:left;background:none;border:none;color:var(--label);cursor:pointer;padding:4px 2px}
+.nutri-sortrow{display:flex;align-items:center;gap:8px;margin:10px 0 4px}
+.nutri-week{display:flex;gap:10px;padding:16px;margin-bottom:14px}
+.nutri-week-col{flex:1;display:flex;flex-direction:column;gap:4px;align-items:flex-start}
 
 /* ---------------------------------------------------------------- reset -- */
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
