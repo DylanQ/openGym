@@ -423,7 +423,7 @@ export default function Settings({ page = null, find = null, via = null, entryKe
   const layout = ['list', 'compact', 'focus'].includes(S.workoutView) ? S.workoutView : 'cards'
   const layoutLabel = { cards: t('Cards'), list: t('List'), compact: t('Compact') }[layout]
   const activeProfile = (S.equipProfiles || []).find(p => p.id === S.activeEquipId)
-  const themeLabel = { dark: t('Dark'), light: t('Light'), system: t('System') }[S.theme || 'dark'] || t('Dark')
+  const themeLabel = { dark: t('Dark'), light: t('Light'), system: t('System'), ledger: t('Ledger') }[S.theme || 'dark'] || t('Dark')
   // The value a root row shows, so most questions are answered without opening the page.
   const preview = {
     workout: () => (S.restSec > 0 ? t('{0} rest', fmtRest(S.restSec)) : t('No rest timer')) + ' · ' + layoutLabel,
@@ -772,6 +772,8 @@ export default function Settings({ page = null, find = null, via = null, entryKe
               { value: 'dark', icon: 'moon', label: t('Dark') },
               { value: 'light', icon: 'sun', label: t('Light') },
               { value: 'system', icon: 'gear', label: t('System') },
+              // This fork's own theme (IRON LEDGER): paper, ink, vermilion stamps.
+              { value: 'ledger', icon: 'note', label: t('Ledger') },
             ]}
             value={S.theme || 'dark'}
             onChange={v => update(s => { s.theme = v })}
@@ -1307,7 +1309,7 @@ function AccentSwatches({ S, update }) {
     const c = cleanHex(hex)
     if (!c) return
     const de = document.documentElement
-    applyAccent(de, c, de.dataset.theme)
+    applyAccent(de, c, de.dataset.theme === 'ledger' ? 'light' : de.dataset.theme)
     pending.current = c
     clearTimeout(timer.current)
     timer.current = setTimeout(commit, OWN_COLOR_SETTLE_MS)

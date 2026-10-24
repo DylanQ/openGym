@@ -63,17 +63,19 @@ const scrollPositions = new Map()
 bindUI(useUI)   // lets the shared controls open sheets without importing the store at module scope
 
 // theme === 'system' follows the OS/browser preference instead of a fixed choice.
-const resolveTheme = theme => theme === 'light' || theme === 'dark'
+// 'ledger' is this fork's own theme (index.css, IRON LEDGER): paper, ink and vermilion,
+// drawn as a light surface, so the accent maths and the system bars treat it as light.
+const resolveTheme = theme => theme === 'light' || theme === 'dark' || theme === 'ledger'
   ? theme
   : (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
 
 function applyPrefs(theme, accent) {
   const de = document.documentElement
   de.dataset.theme = resolveTheme(theme)
-  applyAccent(de, accent, de.dataset.theme)
+  applyAccent(de, accent, de.dataset.theme === 'ledger' ? 'light' : de.dataset.theme)
   const meta = document.querySelector('meta[name="theme-color"]')
-  if (meta) meta.content = de.dataset.theme === 'light' ? '#f2f2f7' : '#000000'
-  if (MOBILE) setSystemBarsLight(de.dataset.theme === 'light')
+  if (meta) meta.content = de.dataset.theme === 'ledger' ? '#F3EEE3' : de.dataset.theme === 'light' ? '#f2f2f7' : '#000000'
+  if (MOBILE) setSystemBarsLight(de.dataset.theme === 'light' || de.dataset.theme === 'ledger')
 }
 
 function Shell() {

@@ -407,7 +407,7 @@ const SYNONYMS = {
   skullcrushers: ['lying triceps extension', 'skull crusher'], pulldown: ['pull down', 'pulldown'],
   pullup: ['pull up', 'pull-up'], chinup: ['chin up', 'chin-up'], pushup: ['push up', 'push-up'],
   pressup: ['push up', 'push-up'], situp: ['sit up', 'sit-up'], flye: ['fly'], flyes: ['fly'], flies: ['fly'],
-  machine: ['lever', 'machine', 'sled'], lever: ['lever', 'machine'], abs: ['crunch', 'abs'],
+  machine: ['lever', 'machine'], lever: ['lever', 'machine'], abs: ['crunch', 'abs'],
   hammy: ['hamstring'], hammies: ['hamstring'], quad: ['quads', 'quadriceps'], tricep: ['triceps'], bicep: ['biceps'],
   delt: ['delts', 'shoulder'], lat: ['lats', 'latissimus', 'pulldown'], trap: ['traps', 'shrug'],
   glute: ['glutes', 'gluteus'], calf: ['calf', 'calves'], hip: ['hip'], rope: ['rope'], trx: ['suspension'],
@@ -553,7 +553,10 @@ const EQ_PRIOR = { barbell: 4, dumbbell: 4, cable: 3, 'leverage machine': 3, 'bo
 const CAT_PRIOR = { strength: 3, calisthenics: 3, olympic: 2, plyometrics: 1, isometric: 1, stretching: -3, mobility: -3, rehab: -4, yoga: -2, pilates: -2 }
 // The one version every gym has, where the catalogue's name hides it: "leg press" means the 45°
 // sled, not the Smith machine or a one-leg variant (Discord, 2026-10-09).
-const EVERYDAY = { '0739': 6 }
+// Fork curation (2026-10-23): "machine leg press" means the seated machine (2267) — the
+// rename made every leverage machine a "Machine …", so the canonical seated press gets the
+// same everyday prior to surface first for that query, above the angled/alternate variants.
+const EVERYDAY = { '0739': 6, '2267': 7 }
 const priorOf = e => (CLASSIC.has(e.id) ? 3 : 0) + (EQ_PRIOR[e.eq] || 0) + (CAT_PRIOR[e.cat] || 0) + (EVERYDAY[e.id] || 0)
 
 // A name that is the query itself wins outright: as typed or in the singular 50, with the typos

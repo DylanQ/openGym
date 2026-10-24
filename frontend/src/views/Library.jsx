@@ -15,14 +15,17 @@ import { Button } from '../components/ui.jsx'
 import { tappable, useRevealActiveChip } from '../lib/use-sheet-keyboard.js'
 import { useAutoMore } from '../lib/use-auto-more.js'
 import { isFav, sortFavouritesFirst, sortYoursFirst, usageOf } from '../lib/favourites.js'
+import { myGymIds, myGymSeeded, applyMyGymSeed, kneeStatus } from '../lib/my-gym.js'
 
 export default function Library() {
   const nav = useNavigate()
   const S = useStore(s => s.S)
+  const update = useStore(s => s.update)
   const [q, setQ] = useState('')
   const [bp, setBp] = useState('')
   const [eq, setEq] = useState('')
   const [cat, setCat] = useState('')
+  const [gym, setGym] = useState(false)   // My Gym scope: the seeded rotation + favourites + recents (lib/my-gym.js)
   const [showAll, setShowAll] = useState(false)   // ignore the active equipment profile for this session
   const [shown, setShown] = useState(40)
   const bpStrip = useRef(null), eqStrip = useRef(null), catStrip = useRef(null)
@@ -43,26 +46,41 @@ export default function Library() {
   // while searching, the exercises you have logged or planned follow right after them.
   const narrowedList = eqOn ? eqFiltered.filter(e => e.eq === eqOn) : eqFiltered
   const usage = useMemo(() => (q.trim() ? usageOf(S) : null), [q, S.routines, S.workouts])
-  const f = usage ? sortYoursFirst(narrowedList, S, usage) : sortFavouritesFirst(narrowedList, S)
+  // My Gym narrows the list to the seeded rotation, favourites and recents; with no search
+  // typed it also reads in that order (his lifts first), a search keeps its own ranking.
+  const gymOrder = gym ? myGymIds(S) : null
+  const gymSet = gymOrder ? new Set(gymOrder) : null
+  const inGym = gymSet ? narrowedList.filter(e => gymSet.has(e.id)) : narrowedList
+  const f = gymSet && !q.trim()
+    ? [...inGym].sort((a, b) => gymOrder.indexOf(a.id) - gymOrder.indexOf(b.id))
+    : usage ? sortYoursFirst(inGym, S, usage) : sortFavouritesFirst(inGym, S)
   useRevealActiveChip(bpStrip, bp)
   useRevealActiveChip(eqStrip, eqOn)
   useRevealActiveChip(catStrip, catOn)
   // A live count at the end of the search field while a search or filter narrows the list
   // (idea and first version: GitLab !31) — how many are left, before scrolling to find out.
-  const narrowed = !!(q.trim() || bp || eqOn || catOn)
+  const narrowed = !!(q.trim() || bp || eqOn || catOn || gym)
   // Close but not exact (a typo too many, most of the words, a similar name), under the results
   // once they are all on screen, so a search almost never ends on "No match".
   // Worked out a beat behind the typing (useDeferredValue): the list itself never waits for it.
+  // Inside My Gym there is no "similar": its whole point is that the rest stays out of the way.
   const qLate = useDeferredValue(q)
-  const similar = q.trim() && qLate === q && f.length <= shown
+  const similar = !gym && q.trim() && qLate === q && f.length <= shown
     ? similarExercises(allExercises(S).filter(e => (!bp || e.bp === bp) && (!profile || showAll || exAvailable(S, e))), q, f, f.length ? 12 : 30)
     : []
   const row = e => {
     const best = bestWeightFor(S, e.id)
+    // A seeded working weight (lib/my-gym.js) shows only until a logged best replaces it: the
+    // seed is a starting suggestion, the log is the record.
+    const seed = best > 0 ? 0 : ((S.exWeights || {})[e.id]?.w || 0)
+    const knee = kneeStatus(e)
     return <div key={e.id} className="item" {...tappable(() => exerciseDetailSheet(e))}>
       <Thumb ex={e} />
       <div className="grow"><div className={`tt ${exerciseNameClass(e)}`}>{isFav(S, e.id) && <Icon name="starFill" className="fav-star" />}{exerciseNameFor(e)}</div><div className="ss capitalize">{t(MUSCLE_NAME[e.tg] || e.tg || e.bp)} · {t(e.eq)}</div></div>
+      {knee === 'safe' && <span className="stamp stamp-safe">{t('Knee-safe')}</span>}
+      {knee === 'caution' && <span className="stamp stamp-caution">{t('Knee load')}</span>}
       {best > 0 && <span className="tag acc">{fmtNum(best)}</span>}
+      {seed > 0 && <span className="tag seed" title={t('Seeded working weight')}>{fmtNum(seed)}</span>}
       <Button size="sm" variant="tinted" icon="plus" onClick={ev => { ev.stopPropagation(); addToRoutineSheet(e) }}>{t('Plan')}</Button>
     </div>
   }
@@ -85,6 +103,17 @@ export default function Library() {
       <button className="chip nocap" style={{ marginInlineStart: 'auto', padding: '3px 10px', fontSize: 12 }} onClick={() => setShowAll(v => !v)}>
         {showAll ? t('Filter by "{0}"', profile.name) : t('Show all equipment')}
       </button>
+    </div>}
+    {/* My Gym (this fork, lib/my-gym.js): the catalogue scoped to the seeded rotation,
+        favourites and recents. Until the seed is applied, the scope still lists the rotation
+        and the card below offers the one-tap setup that files it into the profile. */}
+    <div className="chips" style={{ marginBottom: 8 }}>
+      <button className={'chip nocap' + (gym ? ' on' : '')} onClick={() => { setGym(v => !v); setShown(40) }}>{t('My Gym')}</button>
+    </div>
+    {gym && !myGymSeeded(S) && <div className="card mygym-setup">
+      <div className="tt">{t('Your rotation, ready to file')}</div>
+      <p className="small dim" style={{ margin: '6px 0 10px' }}>{t('One tap adds your gym rotation as favourites, seeds your working weights (pec fly 55 · chest press 65 · pushdown 80) and files Push Day and Leg Day starter routines. Nothing you have already logged or set is overwritten.')}</p>
+      <Button variant="primary" onClick={() => update(s => { applyMyGymSeed(s) })}>{t('Set up My Gym')}</Button>
     </div>}
     {/* Changing body part keeps the equipment filter (issue #71): the eqOn fallback above drops
         it only for the current view if the new body part has nothing under it, without forgetting

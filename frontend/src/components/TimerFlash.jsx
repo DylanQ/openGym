@@ -10,7 +10,9 @@ export default function TimerFlash() {
     if (!id) return
     const de = document.documentElement
     const original = de.dataset.theme
-    const opposite = original === 'light' ? 'dark' : 'light'
+    // 'ledger' (this fork's paper theme) is a light surface, so its opposite is dark —
+    // the same flip 'light' gets; only a dark original flashes to light.
+    const opposite = original === 'dark' ? 'light' : 'dark'
     const steps = [opposite, original, opposite, original]
     const timers = steps.map((theme, i) => setTimeout(() => { de.dataset.theme = theme }, i * 600))
     return () => {
