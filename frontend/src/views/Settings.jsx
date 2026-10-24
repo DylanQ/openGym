@@ -17,7 +17,7 @@ import { unlock, chime, playOnSilentSupported, vibrateSupported, appleTouchDevic
 import { REST_SOUND_IDS, restSoundOf } from '../lib/rest-sounds.js'
 import { scheduleModeOf, chooseFixedWeek, chooseRotation } from '../lib/rotation.js'
 import { queueOf } from '../lib/queue.js'
-import { api, webauthnOK, passkeyRegister, passkeyError, IS_ANDROID } from '../lib/api.js'
+import { webauthnOK, IS_ANDROID } from '../lib/api.js'
 import { pushSupported, enablePush, disablePush, sendTestPush, syncPushSubscription } from '../lib/push.js'
 import { wakeLockSupported } from '../lib/wakelock.js'
 import { t, tn, LANGS, INSTR_LANGS, EXERCISE_NAME_LANGS, baseLang, dateLocale } from '../lib/i18n.js'
@@ -36,16 +36,11 @@ import { checkForUpdate, downloadAndInstall, fetchChecksum, RELEASES_PAGE } from
 import { selfUpdates } from '../lib/channel.js'
 import { forgetCoach } from '../lib/coach-api.js'
 import { REST_MAX, REST_PAUSE_MIN, REST_PAUSE_MAX, fmtRest, fmtDuration } from '../lib/duration.js'
-import { starterPlanSheet, confirmSheet, importFromApp, importFromHevy, equipmentProfileSheet, plateInventorySheet, dumbbellInventorySheet, barDefaultsSheet, menuSheet } from '../sheets.jsx'
+import { starterPlanSheet, confirmSheet, importFromApp, importFromHevy, plateInventorySheet, dumbbellInventorySheet, barDefaultsSheet, menuSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { durationSheet } from '../components/DurationWheel.jsx'
-import { showsConnection, showsLocalLine } from '../components/SyncBanner.jsx'
 import BackupFolderRow, { useBackupFolder, autoBackupSubtitle } from '../components/BackupFolderRow.jsx'
 import { AnimationQualityRow } from '../components/Animations.jsx'
-import { ServerSyncSection, KeptChangesRows, leaveServer, connectServer, passkeySignIn } from '../components/ServerSync.jsx'
-import { passwordOn, PasswordRow, openPasswordSignIn, openPasswordRegister } from '../components/PasswordAuth.jsx'
-import { usePasskeys, PasskeysRow, DeviceLinkRow, openDeviceLinkRedeem } from '../components/Passkeys.jsx'
-import { DeleteAccountRow } from '../components/DeleteAccount.jsx'
 import { Section, Row, SelectRow, Switch, Segmented, Button, TextField, SearchField } from '../components/ui.jsx'
 import { PAGES, ROOT_GROUPS, pageVisible, searchSettings, pageTrail } from './settings-pages.js'
 import { platformNow } from '../lib/platform-now.js'
@@ -98,19 +93,13 @@ export default function Settings({ page = null, find = null, via = null, entryKe
   const user = useStore(s => s.user)
   const sync = useStore(s => s.sync)
   const coachLocal = useStore(s => s.coachLocal)
-  // Name-and-password sign-in, where the instance offers it (#118).
+  // Local-only (Oct 2026): no server config is ever fetched, so there is no sign-in
+  // state to read here — `config` stays for the language default only.
   const config = useStore(s => s.config)
-  const pwOn = passwordOn(config)
   // What the app is showing, which for a profile that never picked a language is worked out on
   // this device rather than stored (#303).
   const lang = effectiveLang(S, config)
-  // This profile's passkeys and the code for another device (#95). A change to them is read back
-  // here and by the password row, whose "Remove" depends on there being a passkey.
-  // On a paired phone only the code for another device uses it (#551).
-  const passkeys = usePasskeys(!!user && !DEMO && (page === 'account'))
-  const [credsV, setCredsV] = useState(0)
-  const credsChanged = () => { passkeys.load(); setCredsV(v => v + 1) }
-  const { update, importConflict, importBackup, setUnit, resetEverything: resetAll, setUser, pullState, pushState, resetDemo } = useStore()
+  const { update, importConflict, importBackup, setUnit, resetEverything: resetAll, resetDemo } = useStore()
   const toast = useUI(s => s.toast)
   const fileRef = useRef(null)
   const importRef = useRef(null)
@@ -363,61 +352,28 @@ export default function Settings({ page = null, find = null, via = null, entryKe
   }
   // Whether any custom exercise has a photo or video: the rows about them only show then.
   const hasMedia = referencedFiles(S).length > 0
-  const registerHere = () => useUI.getState().openSheet(close => <RegisterInline close={close} setUser={setUser} pushState={pushState} pullState={pullState} toast={toast} />)
-  /* Disconnect (phone), Sign out, Sign out everywhere. None of them wipes this device while the
-     server is missing a change: the confirm no longer promises a sync it never checked, and when
-     something is owed, a second sheet says how much and offers to try again, to export a backup,
-     or to go ahead anyway with the changes kept on this device (components/ServerSync.jsx).
-     "Sign out everywhere" also ends every paired phone's token — the phones have no passkey to
-     sign in with, so they have to be paired again, and the confirm says so. Failing, it touches
-     nothing local: still signed in here, and the toast says so. */
-  const kept = t('The changes your server has not seen are kept on this device, and added back when it connects as this account again.')
-  // A workout running here is kept aside by the sign-out (useStore stashActive): the confirm says so.
-  const running = () => S.active ? ' ' + t('You have a workout running. It waits on this device until you’re back on this account.') : ''
-  const leave = (kind, after) => leaveServer(kind, { exportBackup: doExport, exportBackupZip: doExportZip, done: r => { nav('/home'); if (r.stashed) toast(kept); else if (after) toast(after) } })
-  const disconnect = () => confirmSheet({
-    title: t('Disconnect from your server?'),
-    message: t('This phone switches back to local-only and its copy of your account is removed. First it checks that your server has every change. If not, you choose what happens to them.') + running(),
-    confirmText: t('Disconnect'), danger: true,
-    onConfirm: () => leave('disconnect', t('Disconnected. Back to local-only')),
-  })
-  const signOutHere = () => confirmSheet({
-    title: t('Sign out?'),
-    message: t('Your data is removed from this browser; your profile on the server keeps it. First it checks that the server has every change. If not, you choose what happens to them.') + running(),
-    confirmText: t('Sign out'), danger: true,
-    onConfirm: () => leave('signout'),
-  })
-  const signOutEverywhere = () => confirmSheet({
-    title: t('Sign out everywhere?'),
-    message: t('Signs this profile out on every device, including this one. Phones paired with it are disconnected and have to be paired again. Your passkeys keep working, so you can sign in with them again anytime.') + running(),
-    confirmText: t('Sign out everywhere'), danger: true,
-    onConfirm: () => leave('everywhere', t('Signed out on all devices')),
-  })
-  // Signed in, the empty state is pushed to the profile like any other change, so the wipe
-  // reaches the server and every device that syncs with it — the dialog has to say so. The Coach
-  // keeps its data outside S in two homes that can both be in use on one phone: a file per
-  // profile on the server, and — when it runs with the phone's own key — a file on the device.
-  // Each is cleared on its own; forgetCoach() alone would pick one by mode. A failed call must
-  // not stop the reset.
+  // Local-only (Oct 2026): the Disconnect / Sign out / Sign out everywhere family is
+  // gone with the server — there is no account to leave. Reset below is device-only.
+  // The Coach keeps its data outside S in two homes that can both be in use on one phone:
+  // a file per profile on the server, and — when it runs with the phone's own key — a
+  // file on the device. Each is cleared on its own; forgetCoach() alone would pick one
+  // by mode. A failed call must not stop the reset.
   const resetEverything = () => confirmSheet({
     title: t('Reset everything?'),
-    message: user
-      ? t('Deletes your plan, workouts, body weight, photos and videos from your profile on this server and on every signed-in device. This cannot be undone.')
-      : t('Deletes your plan, workouts, body weight, photos and videos on this device. This cannot be undone.'),
+    message: t('Deletes your plan, workouts, body weight, photos and videos on this device. This cannot be undone.'),
     confirmText: t('Delete everything'), danger: true,
     onConfirm: () => {
-      if (user) api('/api/coach/forget', { method: 'POST', body: '{}' }).catch(() => {})
       if (coachLocal?.mode === 'byok') forgetCoach().catch(() => {})
       resetAll()
       nav('/home'); toast(t('All data reset'))
-      clearMediaAfterReset(!!user).catch(() => {})
+      clearMediaAfterReset().catch(() => {})
     },
   })
 
   /* ---------------- what the pages and the search need to know about this device ---------------- */
   const canVibrate = vibrateSupported()
   const ctx = {
-    user, mobile: MOBILE, android, ios: MOBILE && ios, demo: DEMO, wakeOK, hasMedia, pwOn, webauthn: webauthnOK(),
+    user, mobile: MOBILE, android, ios: MOBILE && ios, demo: DEMO, wakeOK, hasMedia, webauthn: webauthnOK(),
     sound: !!S.sound, playOnSilent: playOnSilentSupported(), canVibrate, vibrate: S.vibrate !== false,
     profiles: (S.equipProfiles || []).length > 0, nameLang: EXERCISE_NAME_LANGS.includes(baseLang(lang)),
     pushOK: !MOBILE && pushSupported(), reminderOn: !!S.reminder?.on, nudge: !!S.reminder?.nudge,
@@ -828,13 +784,6 @@ export default function Settings({ page = null, find = null, via = null, entryKe
           subtitle={t('Show the body weight card on Home.')}>
           <Switch checked={S.showWeightCard !== false} onChange={v => update(s => { s.showWeightCard = v })} />
         </Row>
-        {/* The bar at the top that says the app is offline, kept local, or not synced (#369, #330).
-            Here and not under Server & sync, which a phone kept local never shows. Switching it on
-            also brings back the no-server line its × hid (#454). */}
-        {!DEMO && <Row icon="cloud" iconTint="var(--blue)" title={t('Show connection status')}
-          subtitle={t('Off: the bar at the top is hidden. A dot on Home still warns when syncing is stuck.')}>
-          <Switch checked={S.connStatus !== false} onChange={v => update(s => { s.connStatus = v; if (v) s.connLocal = true })} />
-        </Row>}
       </Section>
     </>,
 
@@ -892,7 +841,7 @@ export default function Settings({ page = null, find = null, via = null, entryKe
       {!MOBILE && !standalone() && <Section title={t('Tip')}>
         <Row icon="share" iconTint="var(--blue)"
           title={IS_ANDROID ? t('In Chrome: ⋮ menu → Add to Home screen') : t('In Safari: Share → Add to Home Screen')}
-          subtitle={t('to install openGym as a full-screen app.') + ' ' + (user ? t('Your data syncs with your profile. Sign in anywhere and it’s there.') : t('Guest data stays on this device, so export a backup now and then!'))} />
+          subtitle={t('to install openGym as a full-screen app.') + ' ' + t('Your data stays on this device, so export a backup now and then!')} />
       </Section>}
       {/* The version, where the support template tells people to look for it. On the phone
           build there is no address bar and no about box, so without this there is no way to tell
@@ -907,67 +856,20 @@ export default function Settings({ page = null, find = null, via = null, entryKe
     </>,
 
     account: () => <>
-      {/* The server: which one, which account, how that stands, "Sync now". A paired phone's
-          Admin and Disconnect sit in the same block; a browser's account rows follow in their own. */}
-      {user && !DEMO && <ServerSyncSection>
-        {MOBILE && <>
-          {user.admin && <Row icon="crown" iconTint="var(--indigo)" title={t('Admin dashboard')} accessory="chevron" onClick={() => nav('/admin')} />}
-          {/* A code to sign in on a computer (#551), behind the same proof as in a browser. */}
-          <DeviceLinkRow state={passkeys.st} />
-          <AccountIdRow id={user.id} />
-          <Row icon="signOut" iconTint="var(--red)" title={t('Disconnect')} danger onClick={disconnect} />
-        </>}
-      </ServerSyncSection>}
-
-      {/* account (demo and mobile builds have nothing to sign in to) */}
-      {!(MOBILE && user) && <Section title={MOBILE ? t('Your data') : DEMO ? t('Demo') : t('Account')}>
+      {/* Local-only (Oct 2026): no server, no accounts, no sign-in — this whole page is
+          one statement plus the backup route. Exports (Data & backup) are the only way
+          data leaves the device. */}
+      <Section title={MOBILE ? t('Your data') : DEMO ? t('Demo') : t('Local only')}>
         {MOBILE ? <>
           <Row icon="lock" iconTint="var(--acc)" title={t('All data stays on this phone')} subtitle={t('No account, no cloud. Back it up anytime in Data & backup.')} />
-          <Row icon="cloud" iconTint="var(--indigo)" title={t('Connect to my server')} subtitle={t('Sync this device to your own self-hosted openGym instead.')} accessory="chevron"
-            onClick={connectServer} />
-          <KeptChangesRows />
         </> : DEMO ? <>
           <Row icon="info" iconTint="var(--acc)" title={t('You’re in the demo')} subtitle={t('Example data, stored only in this browser. Go wild and change anything you like.')} />
           <Row icon="reset" iconTint="var(--blue)" title={t('Reset demo data')} accessory="chevron"
             onClick={() => confirmSheet({ title: t('Reset demo data?'), message: t('Puts the example plan, workouts and weigh-ins back the way they started.'), confirmText: t('Reset'), onConfirm: () => { resetDemo(); nav('/home'); toast(t('Demo data reset')) } })} />
-          <Row icon="rocket" iconTint="var(--indigo)" title={t('Self-host openGym')} subtitle={t('Passkey sign-in, sync across your devices, your own data.')} accessory="chevron"
-            onClick={() => window.open(REPO, '_blank', 'noopener')} />
-        </> : user ? <>
-          {user.admin && <Row icon="crown" iconTint="var(--indigo)" title={t('Admin dashboard')} accessory="chevron" onClick={() => nav('/admin')} />}
-          <PasskeysRow state={passkeys.st} changed={credsChanged} />
-          <DeviceLinkRow state={passkeys.st} />
-          <Row icon="qr" iconTint="var(--blue)" title={t('Pair the mobile app')} subtitle={t('Connect the openGym app on your phone to this account.')} accessory="chevron"
-            onClick={() => useUI.getState().openSheet(close => <PairSheet close={close} />)} />
-          {pwOn && <PasswordRow version={credsV} />}
-          <Row icon="signOut" iconTint="var(--red)" title={t('Sign out')} danger onClick={signOutHere} />
-          <Row icon="shield" iconTint="var(--red)" title={t('Sign out everywhere')} subtitle={t('Ends this profile’s sessions on all your devices.')} danger onClick={signOutEverywhere} />
-          <AccountIdRow id={user.id} />
-        </> : webauthnOK() ? <>
-          <Row icon="plusCircle" iconTint="var(--acc)" title={t('Create passkey profile')} subtitle={t('Keeps your data safe and separate per person.')} accessory="chevron" onClick={registerHere} />
-          <Row icon="fingerprint" iconTint="var(--blue)" title={t('Sign in with passkey')} accessory="chevron" onClick={passkeySignIn} />
-          {/* The Login screen offers both of these; a guest who skipped it had no way to either from here. */}
-          {pwOn && <Row icon="plusCircle" iconTint="var(--orange)" title={t('Create profile with a password')} accessory="chevron" onClick={openPasswordRegister} />}
-          {pwOn && <Row icon="key" iconTint="var(--orange)" title={t('Sign in with password')} accessory="chevron" onClick={() => openPasswordSignIn()} />}
-          <Row icon="qr" iconTint="var(--blue)" title={t('Use a code from your other device')} accessory="chevron" onClick={openDeviceLinkRedeem} />
-          <KeptChangesRows />
-        </> : pwOn ? <>
-          {/* No passkeys in this browser (plain http on a LAN address, say): a password is the way in. */}
-          <Row icon="plusCircle" iconTint="var(--acc)" title={t('Create new profile')} subtitle={t('Keeps your data safe and separate per person.')} accessory="chevron" onClick={openPasswordRegister} />
-          <Row icon="key" iconTint="var(--orange)" title={t('Sign in with password')} accessory="chevron" onClick={() => openPasswordSignIn()} />
-          <KeptChangesRows />
         </> : <>
-          <Row icon="lock" iconTint="var(--grey)" title={t('Passkeys not supported in this browser.')} />
-          <KeptChangesRows />
+          <Row icon="lock" iconTint="var(--acc)" title={t('Your data lives on this device')} subtitle={t('No account, no cloud. Export a backup in Data & backup to move it anywhere.')} />
         </>}
-      </Section>}
-      {/* Signed in or paired: the account can be deleted from here (App Store rule 5.1.1(v)). A
-          phone in local-only mode has no account; "Reset everything" in Data & backup wipes it. */}
-      {user && !DEMO && <Section>
-        <DeleteAccountRow exportBackup={doExport} exportBackupZip={doExportZip} hasMedia={hasMedia} done={() => nav('/home')} />
-      </Section>}
-      {/* The connection banner already says this to a guest; the line is for when it is switched
-          off, or its × hid it (#454). */}
-      {!user && !DEMO && !MOBILE && !(showsConnection(S) && showsLocalLine(S)) && <p className="sect-f" style={{ marginTop: -18, marginBottom: 22 }}>{t('Guest mode: your data lives only in this browser.')}</p>}
+      </Section>
     </>,
   }
 
@@ -1002,15 +904,12 @@ function SettingsRoot({ ctx, preview, open, user, sync, home, go, entryKey }) {
   const [q, setQ] = useState(() => (key && lastQuery.key === key ? lastQuery.q : ''))
   const set = v => { lastQuery = { q: v, key }; setQ(v) }
   const hits = q.trim() ? searchSettings(q, ctx) : null
-  // The account card: who this is, and the one line that matters about it.
+  // The account card: local-only, so it is just where the data lives.
+  // (The `user`/`sync` reads above stay for the search context, which still
+  // carries them — they are always null now, and no row keys off them.)
   const acct = DEMO ? { title: t('Demo'), sub: t('Example data, only in this browser.') }
-    : user ? {
-      title: user.name || t('Account'),
-      sub: sync && sync.status && sync.status !== 'ok' ? t('Sync needs a look') : MOBILE ? t('Synced with your server') : t('Account, devices and sync'),
-    }
     : MOBILE ? { title: t('This phone'), sub: t('All data stays on this phone') }
-    : { title: t('Guest'), sub: t('Your data lives on this device. Sign in to sync.') }
-  const initial = user && !DEMO ? String(user.name || '?').trim().charAt(0).toUpperCase() : null
+    : { title: t('This device'), sub: t('Your data lives on this device.') }
   return <div className="narrow">
     <div className="sp-nav">
       <button className="sp-back" data-back="/home" onClick={home} aria-label={t('Home')}><Icon name="chevronLeft" /><span>{t('Home')}</span></button>
@@ -1027,7 +926,6 @@ function SettingsRoot({ ctx, preview, open, user, sync, home, go, entryKey }) {
     </Section> : <div className="sp-empty">{t('No setting matches “{0}”.', q.trim())}</div>) : <>
       <Section>
         <button className="lrow tap sp-acct" onClick={() => open('account')}>
-          <span className={'sp-avatar' + (initial ? ' on' : '')} aria-hidden="true">{initial || <Icon name="personCircle" />}</span>
           <span className="lrow-m"><span className="lrow-t">{acct.title}</span><span className="lrow-s">{acct.sub}</span></span>
           <Icon name="chevronRight" className="lrow-c" />
         </button>
@@ -1364,15 +1262,15 @@ function AccentSwatches({ S, update }) {
 }
 
 function EquipmentCard({ S, update }) {
-  const profiles = S.equipProfiles || []
-  const remove = p => confirmSheet({
-    title: t('Delete profile?'), message: t('"{0}" and its equipment list will be removed.', p.name),
-    confirmText: t('Delete'), danger: true,
-    onConfirm: () => update(s => {
-      s.equipProfiles = (s.equipProfiles || []).filter(x => x.id !== p.id)
-      if (s.activeEquipId === p.id) s.activeEquipId = (s.equipProfiles[0] && s.equipProfiles[0].id) || null
-    }),
-  })
+  // UX overhaul (Oct 2026): gyms are the ONE home for "what equipment is available".
+  // The old equipment-profile list edited the mirror (equipProfiles) that switchGym
+  // overwrites on every gym switch, so edits made here silently vanished — the
+  // "tabs don't talk" complaint in the field. The profile rows, the active-profile
+  // select and the filter switch are gone; this card keeps the owned-inventory rows
+  // (plates, dumbbells, bars) and points at Gyms for availability.
+  const nav = useNavigate()
+  const gyms = S.gyms || []
+  const activeGymName = gyms.find(g => g.id === S.activeGymId)?.name || gyms[0]?.name || null
   // The plates you own, per unit (lib/plates.js) — what the set rows' plate lines load from.
   const plateSummary = ownsPlates(S)
     ? inventoryFor(S).map(p => fmtPlate(p.w) + '×' + p.n).join(' · ') || t('None')
@@ -1388,44 +1286,22 @@ function EquipmentCard({ S, update }) {
   const barSummary = ownBars.length
     ? ownBars.map(eq => { const n = t(eq); return n.charAt(0).toLocaleUpperCase() + n.slice(1) + ' ' + fmtPlate(ownBarDefault(S, eq)) + ' ' + unit }).join(' · ')
     : t('Standard bars. Tap if yours are lighter.')
-  return <Section title={t('Equipment')} footer={t('Filters the exercise library and picker, and flags routine exercises that need something you don’t have in the active profile.')}>
+  return <Section title={t('Equipment')} footer={t('Filters the exercise library and picker, and flags routine exercises that need something you don’t have at your gym. Your gyms own the equipment list — it lives in one place now.')}>
     <Row icon="plate" iconTint="var(--orange)" title={t('Plates')} subtitle={plateSummary} accessory="chevron" onClick={() => plateInventorySheet()} />
     <Row icon="dumbbell" iconTint="var(--teal)" title={t('Dumbbells')} subtitle={dumbbellSummary} accessory="chevron" onClick={() => dumbbellInventorySheet()} />
     <Row icon="barbell" iconTint="var(--blue)" title={t('Your bars')} subtitle={barSummary} accessory="chevron" onClick={() => barDefaultsSheet()} />
-    {profiles.length > 0 && <Row icon="kettlebell" iconTint="var(--acc)" title={t('Filter by equipment')}>
-      <Switch checked={!!S.equipFilterOn} onChange={v => update(s => { s.equipFilterOn = v })} />
-    </Row>}
-    {profiles.length > 0 && <SelectRow icon="house" iconTint="var(--blue)" title={t('Active profile')}
-      value={S.activeEquipId || ''} onChange={v => update(s => { s.activeEquipId = v })}
-      options={profiles.map(p => ({ value: p.id, label: p.name }))} />}
-    {profiles.map(p => (
-      <Row key={p.id} icon="house" iconTint="var(--teal)" title={p.name}
-        subtitle={t('{0} equipment types', p.equipment.length)} accessory="chevron"
-        onClick={() => equipmentProfileSheet(p)}>
-        <button className="iconbtn" aria-label={t('Delete')} onClick={ev => { ev.stopPropagation(); remove(p) }}><Icon name="trash" /></button>
-      </Row>
-    ))}
-    <Row icon="plus" iconTint="var(--acc)" title={t('Add equipment profile')} accessory="chevron" onClick={() => equipmentProfileSheet(null)} />
+    <Row icon="house" iconTint="var(--indigo)" title={t('Gyms')}
+      subtitle={activeGymName ? t('Equipment lives at {0} — tap to edit it there.', activeGymName) : t('Where you train, and what it has.')}
+      accessory="chevron" onClick={() => nav('/settings/profile')} />
   </Section>
 }
 
-// The account's id, small and one tap to copy (#219). It is what an admin puts in ADMIN_UIDS,
-// and the one thing that names an account beyond doubt when someone asks their admin for help:
-// display names are free text and need not be unique. copyText also reaches the clipboard on a
-// plain-http LAN address, where the Clipboard API is missing and password sign-in (#118) is the
-// usual way in; where no copy works at all the id is still on screen to read out.
-/* After "Reset everything": the photos and videos go too. Signed in, the empty state is pushed
-   first and, once the server holds it, the server is asked to drop every file that state no
-   longer refers to (POST /api/media/sweep) — asked before the push landed, it would still see the
-   old state and keep everything, which is the safe side. Then this device keeps only the files a
-   stash refers to: another account's changes kept here are not this reset's to delete. */
-async function clearMediaAfterReset(signedIn) {
+/* After "Reset everything": the photos and videos go too. Local-only (Oct 2026):
+   there is no server to push the empty state to and no sweep to ask for — this
+   device just keeps only the files a stash refers to: another account's changes
+   kept here are not this reset's to delete. */
+async function clearMediaAfterReset() {
   const st = useStore.getState()
-  if (signedIn && typeof st.pushState === 'function') {
-    await st.pushState()
-    const now = useStore.getState()
-    if (now.sync?.status === 'ok' && now.config?.media) await api('/api/media/sweep', { method: 'POST', body: '{}' }).catch(() => {})
-  }
   const keep = typeof st.stashedMediaHashes === 'function' ? await st.stashedMediaHashes() : new Set()
   await mediaStore.retainOnly(keep)
 }
@@ -1457,66 +1333,6 @@ function MediaRow() {
     onClick={remote ? () => syncMedia({ force: true, retryRejected: true }) : undefined} />
 }
 
-function AccountIdRow({ id }) {
-  const toast = useUI(s => s.toast)
-  if (!id) return null
-  const copy = async () => { if (await copyText(id)) toast(t('Account ID copied')) }
-  return <Row icon="personCircle" iconTint="var(--grey)" title={t('Account ID')} subtitle={<span className="acct-id">{id}</span>} onClick={copy} />
-}
-
-// Lets the mobile app's "connect to my server" mode (lib/remote.js) authenticate without a
-// WebAuthn ceremony of its own — the code is minted here, from an already signed-in session,
-// and redeemed by the app for a bearer token. See /api/pair/create in api/server.js.
-function PairSheet({ close }) {
-  const [code, setCode] = useState(null)
-  const [err, setErr] = useState(null)
-  useEffect(() => { api('/api/pair/create', { method: 'POST', body: '{}' }).then(r => setCode(r.code)).catch(e => setErr(e.message || t('Could not generate a code'))) }, [])
-  return <>
-    <h3>{t('Pair the mobile app')}</h3>
-    <div className="muted small" style={{ marginBottom: 14 }}>
-      {t('On the openGym app, choose “Connect to my server”, then enter this address and the code below. It expires in 5 minutes.')}
-    </div>
-    {err ? <div className="dim small">{err}</div> : (
-      <div className="card" style={{ textAlign: 'center', fontSize: 30, fontWeight: 700, letterSpacing: '.16em', padding: '18px 0' }}>
-        {code || '········'}
-      </div>
-    )}
-    <div style={{ height: 12 }} />
-    <Button onClick={close}>{t('Done')}</Button>
-  </>
-}
-
-// The same registration as the sign-in screen's, reached from Settings instead. It asks for
-// the invite code on the same terms: an invite-only instance rejects a registration without
-// one, so a form that cannot collect it is a form that cannot succeed.
-function RegisterInline({ close, setUser, pushState, pullState, toast }) {
-  const nameRef = useRef(null)
-  const [code, setCode] = useState('')
-  const [inviteOnly, setInviteOnly] = useState(false)
-  useEffect(() => { api('/api/config').then(c => setInviteOnly(!!c.invite_only)).catch(() => {}) }, [])
-  const go = async () => {
-    const n = (nameRef.current.value || '').trim()
-    if (!n) { toast(t('Enter a name')); return }
-    if (inviteOnly && !code.trim()) { toast(t('An invite code is required')); return }
-    try {
-      const u = await passkeyRegister(n, code.trim()); setUser(u); close()
-      if (hasData(useStore.getState().S)) { await pushState(); toast(t('Profile created, and your data moved into it')) }
-      else { await pullState(); toast(t('Welcome, {0}', u.name)) }
-    } catch (e) { if (e.name !== 'NotAllowedError' && e.name !== 'AbortError') toast(passkeyError(e, t('Registration failed'))) }
-  }
-  return <>
-    <h3>{t('Create your profile')}</h3>
-    <div className="muted small" style={{ marginBottom: 14 }}>{t('Pick a name, then confirm with your device.')}</div>
-    <TextField ref={nameRef} placeholder={t('Your name')} maxLength={40} />
-    {inviteOnly && <>
-      <div style={{ height: 10 }} />
-      <input className="input" placeholder={t('Invite code')} maxLength={40} value={code}
-        onChange={e => setCode(e.target.value.toUpperCase())} style={{ letterSpacing: '.14em', fontWeight: 600, textAlign: 'center' }} />
-      <div className="dim small" style={{ marginTop: 6 }}>{t('This app is invite-only. Enter the code you were given.')}</div>
-    </>}
-    <div style={{ height: 12 }} /><Button variant="primary" onClick={go}>{t('Create passkey')}</Button>
-  </>
-}
 
 // Android app: writing finished workouts and weigh-ins to Health Connect (#200), the phone's
 // own store for health data, where other apps can read them. A fact about this phone, kept in

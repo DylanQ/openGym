@@ -34,6 +34,8 @@ describe('instance default language', () => {
     expect(shown()).toBe('en')   // nothing to go on before the config
     const before = clone(useStore.getState().S)
 
+    // Local-only (Oct 2026): the config only arrives with a user in state now.
+    useStore.setState({ user: { id: 'u1' } })
     api.mockResolvedValueOnce({ invite_only: false, allow_guest: true, default_lang: 'pt-BR' })
     await useStore.getState().refreshConfig()
     expect(shown()).toBe('pt-BR')
@@ -42,6 +44,8 @@ describe('instance default language', () => {
 
   it('the next boot uses the default this device last saw, before the config answers', async () => {
     nav(['de-DE'])
+    // Local-only (Oct 2026): the config only arrives with a user in state now.
+    useStore.setState({ user: { id: 'u1' } })
     api.mockResolvedValueOnce({ invite_only: false, default_lang: 'pt-BR' })
     await useStore.getState().refreshConfig()
     useStore.setState({ S: freshState(), config: null })

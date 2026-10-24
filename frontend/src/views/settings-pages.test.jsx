@@ -86,10 +86,10 @@ const guestWeb = {
 describe('the root', () => {
   it('is an account card and one row per page, in the four groups, with value previews', () => {
     mount()
-    expect(host.querySelector('.sp-acct .lrow-t').textContent).toBe('Guest')
-    expect(host.querySelector('.sp-acct .lrow-s').textContent).toBe('Your data lives on this device. Sign in to sync.')
+    expect(host.querySelector('.sp-acct .lrow-t').textContent).toBe('This device')
+    expect(host.querySelector('.sp-acct .lrow-s').textContent).toBe('Your data lives on this device.')
     // a guest in a browser has no reminders (no push server) and no Coach page (the server's Coach)
-    expect(titles()).toEqual(['Guest', 'Workout', 'Timer alerts', 'Plan & schedule', 'Units & language', 'Equipment', 'Nutrition', 'Training Profile', 'Look & Home', 'Data & backup', 'About & updates'])
+    expect(titles()).toEqual(['This device', 'Workout', 'Timer alerts', 'Plan & schedule', 'Units & language', 'Equipment', 'Nutrition', 'Training Profile', 'Look & Home', 'Data & backup', 'About & updates'])
     expect(rowTitled('Workout').querySelector('.lrow-v').textContent).toBe('1:30 rest · Cards')
     expect(rowTitled('Timer alerts').querySelector('.lrow-v').textContent).toBe('Sound · Vibrate')
     expect(rowTitled('Plan & schedule').querySelector('.lrow-v').textContent).toMatch(/^Fixed Week · Mon/)
@@ -123,13 +123,14 @@ describe('the root', () => {
     expect(rowTitled('Workout').querySelector('.lrow-v').textContent).toBe('No rest timer · Cards')
   })
 
-  it('signed in, Reminders is there and the card names the account; on the phone app the Coach too', () => {
+  it('signed in, Reminders is there; on the phone app the Coach too — and the card never names an account any more', () => {
     mocks.user = { id: 'u1', name: 'Dana' }
     mount()
     expect(titles()).toContain('Reminders')
     expect(titles()).not.toContain('AI Coach')
-    expect(host.querySelector('.sp-acct .lrow-t').textContent).toBe('Dana')
-    expect(host.querySelector('.sp-avatar').textContent).toBe('D')
+    // Local-only (Oct 2026): the card is where the data lives, not who signed in.
+    expect(host.querySelector('.sp-acct .lrow-t').textContent).toBe('This device')
+    expect(host.querySelector('.sp-avatar')).toBeNull()
     mocks.user = null
     mocks.MOBILE = true
     mount()
@@ -201,8 +202,9 @@ describe('the search lands on a row', () => {
     expect(searchSettings('reminder time', web, tr).map(h => h.title)).toEqual(['Reminder time'])
     expect(searchSettings('tone', web, tr).map(h => h.title)).toContain('Nudge tone')
     expect(searchSettings('test notification', web, tr).map(h => h.title)).toEqual(['Send test notification'])
-    expect(searchSettings('server', web, tr).map(h => h.title)).toContain('Sync now')
-    expect(searchSettings('sync', web, tr).map(h => h.title)).toContain('Sync now')
+    // Local-only (Oct 2026): no sign-in or sync row exists to find any more.
+    expect(searchSettings('server', web, tr)).toEqual([])
+    expect(searchSettings('sync', web, tr)).toEqual([])
     expect(searchSettings('loop', web, tr).map(h => h.title)).toContain('How you train')
     expect(searchSettings('swipe', web, tr)[0].title).toBe('Swipe actions')
     expect(searchSettings('gesture', web, tr).map(h => h.title)).toEqual(['Swipe actions'])

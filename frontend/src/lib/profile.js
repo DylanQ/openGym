@@ -97,8 +97,19 @@ export const hasSetupSignals = S => !!(
  * grandfathered (B2 acceptance): seeded or already training, he gets the Profile hub,
  * never the wizard. A genuinely fresh state — nothing logged, nothing planned — is the
  * only one that sees it, and finishing (or any first log) retires it for good.
+ * Kept for compatibility; the intro gate below is the one the app actually uses.
  */
 export const needsOnboarding = S => S?.onboarded !== true && !hasSetupSignals(S)
+
+/**
+ * Whether the First Entry intro wizard is still owed. UX overhaul (Oct 2026, Dylan's
+ * field feedback): the intro is for EVERYONE, once — seeded, derived and already-training
+ * states included. Derivation pre-fills the wizard (profileOf, the active gym, the last
+ * weigh-in) so the walk is confirm-or-fix, never a cold interrogation, but nothing
+ * derives the walk away. Only finishing or explicitly skipping retires it, tracked by
+ * the dedicated `introSeen` flag — never by onboarded or by setup signals.
+ */
+export const needsIntro = S => S?.introSeen !== true
 
 /** Minutes a session may run, mods (today only) over the profile's standing choice. */
 export const durationOf = (profile, mods) =>

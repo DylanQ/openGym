@@ -245,31 +245,24 @@ describe('ordering', () => {
 
   // The change lands while the server copy is still on its way: it is merged into that copy
   // rather than overwritten by it, and the merge is what boot pushes.
-  it('boot keeps a change made during its pull and pushes the merge', async () => {
+  // Local-only (Oct 2026): boot pulls nothing, so there is no merge to push —
+  // a change made around boot is just kept, and nothing goes out.
+  it('boot pulls nothing and pushes nothing; a change made around it is kept', async () => {
     vi.useFakeTimers()
     useStore.setState({ S: clone(DEF), user: { id: 'user-1' }, ready: false })
     localStorage.setItem('gym_user', JSON.stringify({ id: 'user-1' }))
-    api.mockImplementation(async (path, opts) => {
-      if (path === '/api/config') return { allow_guest: true }
-      if (path === '/api/me') return { user: { id: 'user-1', name: 'One' } }
-      if (path === '/api/data' && !opts) {
-        useStore.getState().update(s => { s.restSec = 30 })   // a change while the pull is in flight
-        return { state: { ...clone(DEF), _ts: 10, routines: [routine('r')], _rev: 1 }, rev: 1 }
-      }
-      return { ok: true, rev: 2 }
-    })
+    api.mockImplementation(async () => { throw new Error('unexpected call') })
 
     const boot = useStore.getState().boot()
+    useStore.getState().update(s => { s.restSec = 30 })
     await vi.advanceTimersByTimeAsync(10)
     await boot
     await vi.advanceTimersByTimeAsync(2000)
 
-    expect(puts()).toHaveLength(1)
-    expect(puts()[0].baseRev).toBe(1)
-    expect(puts()[0].state.restSec).toBe(30)
-    expect(puts()[0].state.routines.map(r => r.id)).toEqual(['r'])
+    expect(puts()).toHaveLength(0)
+    expect(api).not.toHaveBeenCalled()
     expect(useStore.getState().S.restSec).toBe(30)
-    expect(useStore.getState().S.routines.map(r => r.id)).toEqual(['r'])
+    expect(useStore.getState().user).toBeNull()
     expect(useStore.getState().ready).toBe(true)
   })
 

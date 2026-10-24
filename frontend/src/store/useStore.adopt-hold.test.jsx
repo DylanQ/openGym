@@ -7,7 +7,8 @@
    gone for good; closing the app with the question open did the same on the next start.
 
    Now nothing syncs between the pairing and the answer, the answer is applied to the server's
-   copy as it is when the question closes, and a start with the question still open asks it again.
+   copy as it is when the question closes — and, local-only since Oct 2026, a
+   start with the question still open asks nothing at all: it boots local.
 
    Real modules: store/useStore.js, lib/api.js, lib/remote.js, lib/mobile.js. Mocked: the Capacitor
    plugins (an in-memory Directory.Data), the question sheet, and fetch, which plays the server. */
@@ -190,7 +191,10 @@ describe('pairing a phone: nothing syncs while the question is open', () => {
     expect(ids(srv.doc.workouts).sort()).toEqual([...ids(TWELVE), 'phone-1', 'web-new'].sort())
   })
 
-  it('closed with the question open, the next start asks again and pushes nothing before the answer', async () => {
+  // Local-only (Oct 2026): the question is never asked again, because there is
+  // no server to adopt into any more. The next start boots local, keeps the
+  // phone's own workout, and pushes nothing — the server's copy is untouched.
+  it('closed with the question open, the next start boots local, asks nothing, and pushes nothing', async () => {
     localPhone()
     const srv = serverWith(SERVER)
     let useStore = await freshStore()
@@ -201,20 +205,16 @@ describe('pairing a phone: nothing syncs while the question is open', () => {
     await sleep(900)   // the file mirror's debounce, as on a phone that stayed open a moment
     for (const s of stores) s.setState({ user: null, ready: false })
 
-    const answer = deferred()
-    h.ask = vi.fn(() => answer.p)
+    h.ask = vi.fn()
     useStore = await freshStore()
     await useStore.getState().boot()
-    while (!h.ask.mock.calls.length) await sleep(5)
-    expect(h.ask).toHaveBeenCalledWith(expect.objectContaining({ workouts: 1 }))
+    await sleep(50)
+    expect(h.ask).not.toHaveBeenCalled()
+    expect(useStore.getState().user).toBeNull()
+    expect(useStore.getState().ready).toBe(true)
     await everySyncTrigger(useStore)
     expect(srv.puts).toHaveLength(0)
-
-    answer.resolve(false)
-    while (localStorage.getItem('gym_adopt')) await sleep(5)
-    await sleep(20)
-    expect(srv.puts).toHaveLength(0)
     expect(ids(srv.doc.workouts)).toHaveLength(12)
-    expect(ids(useStore.getState().S.workouts)).toEqual(ids(TWELVE))
+    expect(ids(useStore.getState().S.workouts)).toEqual(['phone-1'])
   })
 })

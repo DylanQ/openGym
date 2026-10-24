@@ -41,7 +41,7 @@ import { glyphOf } from '../lib/glyphs.js'
 import TodayEntry from './TodayEntry.jsx'
 import WeekTargets from '../components/WeekTargets.jsx'
 import RirPrompt from '../components/RirPrompt.jsx'
-import { needsOnboarding } from '../lib/profile.js'
+import { needsIntro } from '../lib/profile.js'
 import { prefOf, setPref } from '../lib/ex-pref.js'
 import { markAllSetsDone, sessionHistory } from '../lib/backfill.js'
 import { bindWatchActions } from '../lib/watch-sync.js'
@@ -71,9 +71,9 @@ function StartChooser() {
   const others = S.routines.filter(r => !idSet.has(r.id))
   return <div className="narrow">
     <div className="hdr"><div><h1>{t('Start workout')}</h1><div className="sub">{t(DAYN[new Date().getDay()])} · {todayRoutines.length ? t('today is {0}', todayName) : t('rest day, but no one’s stopping you')}</div></div></div>
-    {needsOnboarding(S) && <div className="card" style={{ borderColor: 'var(--acc)' }}>
+    {needsIntro(S) && <div className="card" style={{ borderColor: 'var(--acc)' }}>
       <h2 className="accent">{t('First Entry')}</h2>
-      <div className="muted small" style={{ marginBottom: 12 }}>{t('Two minutes of setup — goal, gym, split — and the app composes your workouts from your own numbers from then on.')}</div>
+      <div className="muted small" style={{ marginBottom: 12 }}>{t('Two minutes of setup — goal, gym, split — and the app composes your workouts from your own numbers from then on. Everything it already knows is pre-filled; you just confirm it.')}</div>
       <Button variant="primary" icon="sunrise" onClick={() => nav('/first-entry')}>{t('Set up')}</Button>
     </div>}
     <TodayEntry />

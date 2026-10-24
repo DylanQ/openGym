@@ -67,4 +67,18 @@ describe('dumbbell inventory sheet', () => {
     act(() => button(host, 'Fill in 5 to 100 lb, every 5').click())
     expect(S().dumbbells.lb.weights.slice(0, 3)).toEqual([5, 10, 15])
   })
+
+  it('with an active gym, saves onto the gym — the one home for the list', () => {
+    useStore.setState(s => ({ S: {
+      ...s.S,
+      gyms: [{ id: 'gym-planet-fitness', name: 'Planet Fitness', equipment: ['dumbbell'], dbWeights: [2, 4] }],
+      activeGymId: 'gym-planet-fitness',
+    } }))
+    act(() => dumbbellInventorySheet())
+    const host = mountTopSheet()
+    expect(host.textContent).toContain('Planet Fitness')
+    act(() => button(host, 'Fill in 2 to 50 kg, every 2').click())
+    expect(S().gyms[0].dbWeights).toHaveLength(25)
+    expect(S().dumbbells.kg.weights).toHaveLength(25)   // mirrored, not a second list
+  })
 })

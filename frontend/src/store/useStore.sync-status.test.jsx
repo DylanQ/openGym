@@ -123,7 +123,10 @@ describe('sync status', () => {
   })
 })
 
-describe('the web boot', () => {
+describe('the local boot', () => {
+  // Local-only (Oct 2026): the mock server below is never called — boot asks
+  // nothing. The helper still sets a user first, to prove a stale session in
+  // state is dropped rather than restored.
   const boot = async (me, user = USER) => {
     api.mockImplementation(async path => {
       if (path === '/api/config') return { allow_guest: true }
@@ -134,25 +137,24 @@ describe('the web boot', () => {
     await useStore.getState().boot()
   }
 
-  it('a session that ended goes back to sign-in, keeps the copy with its owner, and says why', async () => {
+  it('boot never asks the server: an ended session, a dirty flag, a garbage answer — the copy just stays local', async () => {
     useStore.setState({ S: { ...clone(DEF), _ts: 100, workouts: [workout('w1')] } })
+    localStorage.setItem('gym_dirty', '1')
     await boot(() => { throw httpError(401) })
+    expect(api).not.toHaveBeenCalled()
     expect(useStore.getState().user).toBeNull()
     expect(ids(useStore.getState().S.workouts)).toEqual(['w1'])
     expect(localStorage.getItem('gym_owner')).toBe(USER.id)
-    expect(useStore.getState().sync).toMatchObject({ status: 'auth', lastError: { status: 401 } })
-    useStore.getState().setGuest(true)   // "Continue without account"
     expect(useStore.getState().sync.status).toBe('local')
+    expect(useStore.getState().ready).toBe(true)
   })
 
-  it('a reload after that still says so while the copy owes its account changes — not once a guest chose to go on', async () => {
+  it('a second boot stays local too, and still asks nothing', async () => {
     useStore.setState({ S: { ...clone(DEF), _ts: 100, workouts: [workout('w1')] } })
     localStorage.setItem('gym_dirty', '1')
     await boot(() => { throw httpError(401) }, null)
-    expect(useStore.getState().sync).toMatchObject({ status: 'auth', pending: true, lastError: { status: 401 } })
-
-    useStore.getState().setGuest(true)
     await boot(() => { throw httpError(401) }, null)
+    expect(api).not.toHaveBeenCalled()
     expect(useStore.getState().sync.status).toBe('local')
   })
 
@@ -162,10 +164,11 @@ describe('the web boot', () => {
     expect(useStore.getState().sync.status).toBe('local')
   })
 
-  it('a page in front that answers for the server is an error, not a sign-out', async () => {
+  it('a page in front that would answer for the server is never asked', async () => {
     await boot(() => { throw Object.assign(new Error('not openGym data'), { status: 200, code: 'bad-response' }) })
-    expect(useStore.getState().user).toEqual(USER)
-    expect(useStore.getState().sync).toMatchObject({ status: 'error', lastError: { status: 200, code: 'bad-response' } })
+    expect(api).not.toHaveBeenCalled()
+    expect(useStore.getState().user).toBeNull()
+    expect(useStore.getState().sync.status).toBe('local')
   })
 })
 
@@ -323,34 +326,15 @@ describe('a sign-out the server did not answer', () => {
     expect(useStore.getState().user).toBeNull()
     expect(localStorage.getItem('gym_logout_owed')).toBe('1')
 
-    // Still unreachable: the old session is not even asked about.
+    // Local-only (Oct 2026): the next boot ignores the flag entirely — no
+    // logout request, no /api/me, nothing signs the browser back in or out.
+    // (The flag itself stays in storage, orphaned; nothing reads it any more.)
     api.mockReset()
-    api.mockImplementation(async (path, o) => {
-      if (path === '/api/config') return { allow_guest: true }
-      if (path === '/api/logout') throw httpError(502)
-      if (path === '/api/me') return { user: USER }
-      throw new Error('unexpected ' + path)
-    })
     useStore.setState({ ready: false, config: null })
     await useStore.getState().boot()
-    expect(paths()).toEqual(['GET /api/config', 'POST /api/logout'])
+    expect(api).not.toHaveBeenCalled()
     expect(useStore.getState().user).toBeNull()
     expect(useStore.getState().ready).toBe(true)
-    expect(localStorage.getItem('gym_logout_owed')).toBe('1')
-
-    // The server answers again: the logout goes first, and /api/me finds nobody.
-    api.mockReset()
-    api.mockImplementation(async path => {
-      if (path === '/api/config') return { allow_guest: true }
-      if (path === '/api/logout') return { ok: true }
-      if (path === '/api/me') throw httpError(401)
-      throw new Error('unexpected ' + path)
-    })
-    useStore.setState({ ready: false, config: null })
-    await useStore.getState().boot()
-    expect(paths()).toEqual(['GET /api/config', 'POST /api/logout', 'GET /api/me'])
-    expect(useStore.getState().user).toBeNull()
-    expect(localStorage.getItem('gym_logout_owed')).toBeNull()
   })
 
   it('signing in again replaces the cookie a failed sign-out left behind, so the next boot asks /api/me as usual', async () => {

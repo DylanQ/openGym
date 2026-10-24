@@ -6,10 +6,9 @@ import Settings from './Settings.jsx'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
-// "Reset everything" is one dialog with two truths. A guest's data lives in this browser only.
-// A signed-in profile pushes the empty state to the server like any other change, so the wipe
-// reaches every device that syncs with it — and the Coach's own files have to go too: the
-// per-profile one on the server, and the device one when the Coach runs with the phone's own key.
+// "Reset everything" is one dialog with one truth (local-only, Oct 2026): the wipe
+// is device-only, whatever account a stale store still names. The Coach's device
+// file still has to go when the Coach runs with the phone's own key.
 const mocks = vi.hoisted(() => {
   const state = { S: null, user: null, coachLocal: null }
   state.replaceState = vi.fn()
@@ -105,42 +104,31 @@ describe('Settings — reset everything', () => {
     expect(mocks.toast).toHaveBeenCalledWith('All data reset')
   })
 
-  it('signed in: says the wipe reaches the server and every device, and forgets the Coach on the server too', () => {
+  // Local-only (Oct 2026): even a stale account in the store changes nothing —
+  // the wipe is device-only and no server forget call is ever made.
+  it('stale account in the store: the wipe is still device-only, and never calls the server', () => {
     mocks.user = { uid: 'u1', name: 'Ana' }
     mount()
     const dialog = openDialog()
-    expect(dialog.message).toBe('Deletes your plan, workouts, body weight, photos and videos from your profile on this server and on every signed-in device. This cannot be undone.')
+    expect(dialog.message).toBe('Deletes your plan, workouts, body weight, photos and videos on this device. This cannot be undone.')
     act(() => { dialog.onConfirm() })
-    expect(serverForgetCalls()).toHaveLength(1)
-    expect(serverForgetCalls()[0][1]).toEqual({ method: 'POST', body: '{}' })
+    expect(serverForgetCalls()).toHaveLength(0)
     expect(mocks.forgetCoach).not.toHaveBeenCalled()   // no device Coach here
     expect(mocks.resetEverything).toHaveBeenCalledTimes(1)
     expect(mocks.toast).toHaveBeenCalledWith('All data reset')
   })
 
-  it('signed in: a failing Coach call does not block the reset', async () => {
-    mocks.user = { uid: 'u1', name: 'Ana' }
-    mocks.api.mockRejectedValueOnce(new Error('offline'))
+  it('a failing device-Coach call does not block the reset', async () => {
+    mocks.coachLocal = { mode: 'byok', provider: 'anthropic' }
+    mocks.forgetCoach.mockRejectedValueOnce(new Error('offline'))
     mount()
     const dialog = openDialog()
     await act(async () => { dialog.onConfirm(); await Promise.resolve() })
-    expect(serverForgetCalls()).toHaveLength(1)
+    expect(serverForgetCalls()).toHaveLength(0)
     expect(mocks.resetEverything).toHaveBeenCalledTimes(1)
     expect(mocks.toast).toHaveBeenCalledWith('All data reset')
   })
 
-  // A paired phone running the Coach with its own key has Coach data in both homes.
-  it('paired phone with its own key: clears the Coach on the server and on the device', () => {
-    mocks.user = { uid: 'u1', name: 'Ana' }
-    mocks.coachLocal = { mode: 'byok', provider: 'anthropic' }
-    mount()
-    const dialog = openDialog()
-    act(() => { dialog.onConfirm() })
-    expect(serverForgetCalls()).toHaveLength(1)
-    expect(mocks.forgetCoach).toHaveBeenCalledTimes(1)
-    expect(mocks.resetEverything).toHaveBeenCalledTimes(1)
-    expect(mocks.toast).toHaveBeenCalledWith('All data reset')
-  })
 
   it('own key, no server: clears the device Coach without touching the server', () => {
     mocks.coachLocal = { mode: 'byok', provider: 'anthropic' }

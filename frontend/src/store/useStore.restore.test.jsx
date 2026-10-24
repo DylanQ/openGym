@@ -114,6 +114,8 @@ describe('saved workout state sync and restore', () => {
   it('restores a remote state over defaults when the local profile is empty', async () => {
     const remote = { _ts: 30, routines: [routine('remote')], workouts: [] }
     api.mockResolvedValue({ state: remote })
+    // Local-only (Oct 2026): pullState needs a user in state to fetch at all.
+    useStore.setState({ user: { id: 'user-1' }, ready: true })
 
     await useStore.getState().pullState()
 

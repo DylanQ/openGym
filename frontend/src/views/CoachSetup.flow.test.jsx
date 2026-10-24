@@ -104,53 +104,14 @@ describe('CoachSetup — where it runs at all', () => {
     expect(mocks.nav).toHaveBeenCalledWith('/settings', { replace: true })
   })
 
-  it('re-asks the paired server what it can do, because the admin may have switched it on', async () => {
+  // Local-only (Oct 2026): no server is ever asked — the setup screen offers
+  // the phone's own key and nothing else, and never reaches for a server config.
+  it('offers only the phone’s own key, and asks no server anything', async () => {
     await mount()
-    expect(mocks.refreshConfig).toHaveBeenCalledTimes(1)
-  })
-
-  it('asks nothing of a server it is not signed in to', async () => {
-    mocks.user = null; mocks.config = null
-    await mount()
+    expect(rowTitled('Use my self-hosted openGym')).toBeUndefined()
+    expect(rowTitled('Bring my own API key')).toBeTruthy()
     expect(mocks.refreshConfig).not.toHaveBeenCalled()
-  })
-})
-
-describe('CoachSetup — "use my self-hosted openGym"', () => {
-  it('hands the Coach to the server and leaves for the conversation', async () => {
-    await mount()
-    await click(rowTitled('Use my self-hosted openGym'))
-    await settle()
-    expect(mocks.setCoachLocal).toHaveBeenCalledWith({ mode: 'server' })
-    expect(mocks.toast).toHaveBeenCalledWith('The Coach is on')
-    expect(mocks.nav).toHaveBeenCalledWith('/coach')
-  })
-
-  it('an unpaired phone is asked to connect first, and nothing is written', async () => {
-    mocks.user = null; mocks.config = null
-    await mount()
-    expect(rowTitled('Use my self-hosted openGym').textContent).toContain('Connect to my server')
-    await click(rowTitled('Use my self-hosted openGym'))
-    expect(mocks.openSheet).toHaveBeenCalledTimes(1)
-    expect(mocks.setCoachLocal).not.toHaveBeenCalled()
-    expect(mocks.nav).not.toHaveBeenCalled()
-  })
-
-  it('a paired server with no Coach on it refuses, explains, and writes nothing', async () => {
-    mocks.config = { coach: { enabled: false } }
-    await mount()
-    const row = rowTitled('Use my self-hosted openGym')
-    expect(row.textContent).toContain('Your server has no Coach enabled')
-    await click(row)
-    expect(mocks.setCoachLocal).not.toHaveBeenCalled()
-    expect(mocks.nav).not.toHaveBeenCalled()
-    expect(host.querySelector('.card').textContent).toContain('Ask its admin, or bring your own key below')
-  })
-
-  it('says it is still asking while the server has not answered yet', async () => {
-    mocks.config = null
-    await mount()
-    expect(rowTitled('Use my self-hosted openGym').textContent).toContain('Loading…')
+    expect(mocks.openSheet).not.toHaveBeenCalled()
   })
 
   it('Back returns to Settings', async () => {

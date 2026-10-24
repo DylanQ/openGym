@@ -205,7 +205,10 @@ describe('Settings — photos and videos', () => {
     expect(mocks.importBackup.mock.calls[1][1]).toEqual({ mergeWith: null })
   })
 
-  it('Reset, signed in: pushes, asks the server to sweep, and keeps only what a stash refers to', async () => {
+  // Local-only (Oct 2026): reset never pushes and never asks for a sweep — not
+  // even with a stale account and a media config in the store. It just keeps
+  // only what a stash refers to.
+  it('Reset, stale account and all: pushes nothing, sweeps nothing, keeps only what a stash refers to', async () => {
     mocks.user = { id: 'u1', name: 'Ana' }
     mocks.config = { media: { imageMB: 2 } }
     const other = 'c'.repeat(64)
@@ -216,21 +219,21 @@ describe('Settings — photos and videos', () => {
     act(() => { row('Reset everything').click() })
     act(() => { mocks.confirmSheet.mock.calls[0][0].onConfirm() })
     await until(async () => !(await media.has(HASH)))
-    expect(mocks.pushState).toHaveBeenCalled()
-    expect(mocks.api.mock.calls.map(c => c[0])).toContain('/api/media/sweep')
+    expect(mocks.pushState).not.toHaveBeenCalled()
+    expect(mocks.api.mock.calls.map(c => c[0])).not.toContain('/api/media/sweep')
     expect(await media.has(HASH)).toBe(false)
     expect(await media.has(other)).toBe(true)
   })
 
-  it('Reset: no sweep before the empty state is on the server, nor for a guest', async () => {
+  it('Reset: no sweep and no push for a stale account, nor for a guest', async () => {
     mocks.user = { id: 'u1', name: 'Ana' }
     mocks.config = { media: { imageMB: 2 } }
     mocks.sync = { status: 'offline' }
     await mount()
     act(() => { row('Reset everything').click() })
     act(() => { mocks.confirmSheet.mock.calls[0][0].onConfirm() })
-    await until(() => mocks.pushState.mock.calls.length > 0)
     await settle()
+    expect(mocks.pushState).not.toHaveBeenCalled()
     expect(mocks.api.mock.calls.map(c => c[0])).not.toContain('/api/media/sweep')
     act(() => root.unmount())
     root = createRoot(host)

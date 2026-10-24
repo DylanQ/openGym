@@ -1,9 +1,9 @@
 // Mobile build only: how the Coach should run on this phone.
 //
-// Two answers. "Use my self-hosted openGym" hands the whole thing to the paired server — the
-// same Coach the web app has, with whatever provider its admin configured; the phone only has
-// to be paired. "Bring my own API key" runs the pipeline on the phone against Anthropic,
-// OpenAI, Gemini or an OpenAI-compatible endpoint, with a key that stays in secure storage.
+// Local-only (Oct 2026): one answer. "Bring my own API key" runs the pipeline on the
+// phone against Anthropic, OpenAI, Gemini or an OpenAI-compatible endpoint, with a key
+// that stays in secure storage. The old "Use my self-hosted openGym" answer is gone
+// with the server.
 //
 // The promise this screen keeps: nothing AI-shaped is loaded until a mode is chosen. Its only
 // imports from the Coach core are the provider table and the five category names — the
@@ -19,7 +19,6 @@ import { CATEGORY_TEXT } from '../lib/coach.js'
 import { getApiKey, setApiKey, clearApiKey } from '../lib/coach-secrets.js'
 import { HTTP_PROVIDERS, HTTP_PROVIDER_IDS, baseUrlFor, validateBaseUrl } from '../../../api/coach/core/providers.js'
 import { DATA_CATEGORIES } from '../../../api/coach/core/categories.js'
-import { ConnectSheet } from './MobileOnboarding.jsx'
 import { AiConsentSection } from '../components/CoachConsentSheet.jsx'
 import Icon from '../components/Icon.jsx'
 import { Section, Row, Button, TextField } from '../components/ui.jsx'
@@ -34,19 +33,15 @@ const STEPS = () => [t('Loading the exercise catalogue…'), t('Checking the end
 // refused up front with the two ways that work: HTTPS in front of the model, or the server's
 // Coach, which has no such rule and reaches http:// on its own network.
 const isCleartext = url => /^http:\/\//i.test(String(url || '').trim())
-const cleartextRefused = () => t('Android blocks unencrypted http:// connections from apps, so this phone can only reach an https:// endpoint. Put HTTPS in front of it (Tailscale or a reverse proxy), or choose “Use my self-hosted openGym”: your server can reach an http:// model on its own network.')
+const cleartextRefused = () => t('Android blocks unencrypted http:// connections from apps, so this phone can only reach an https:// endpoint. Put HTTPS in front of it (Tailscale or a reverse proxy).')
 
 export default function CoachSetup() {
   const nav = useNavigate()
-  const user = useStore(s => s.user)
-  const config = useStore(s => s.config)
   const coachLocal = useStore(s => s.coachLocal)
   const setCoachLocal = useStore(s => s.setCoachLocal)
-  const refreshConfig = useStore(s => s.refreshConfig)
   const toast = useUI(s => s.toast)
-  const openSheet = useUI(s => s.openSheet)
 
-  const [choice, setChoice] = useState(null)              // 'server' | 'byok' | null
+  const [choice, setChoice] = useState(null)              // 'byok' | null
   const [provider, setProvider] = useState(coachLocal?.provider || 'anthropic')
   const [baseUrl, setBaseUrl] = useState(coachLocal?.baseUrl || '')
   const [model, setModel] = useState(coachLocal?.model || '')
@@ -58,20 +53,10 @@ export default function CoachSetup() {
 
   useEffect(() => { if (!MOBILE) nav('/settings', { replace: true }) }, [])
   useEffect(() => { getApiKey().then(k => setHasKey(!!k)) }, [])
-  // Ask the paired server afresh: the admin may have switched the Coach on since this phone booted.
-  useEffect(() => { if (user) refreshConfig() }, [user])
   useEffect(() => { setModels(null); setModel(coachLocal?.provider === provider ? (coachLocal?.model || '') : '') }, [provider])
 
   const meta = HTTP_PROVIDERS[provider] || {}
   const host = hostOf(baseUrlFor(provider, { providerOptions: { [provider]: { baseUrl } } }))
-  const serverHasCoach = !!(user && config?.coach?.enabled)
-
-  const useServer = async () => {
-    if (!user) return openSheet(close => <ConnectSheet close={close} />)
-    await setCoachLocal({ mode: 'server' })
-    toast(t('The Coach is on'))
-    nav('/coach')
-  }
 
   // The lazy load, and the reachability check, as three real steps.
   const prepare = async () => {
@@ -142,17 +127,10 @@ export default function CoachSetup() {
     </div>
 
     <Section title={t('How should the Coach run?')} footer={current}>
-      <Row icon="rocket" iconTint="var(--indigo)" title={t('Use my self-hosted openGym')}
-        subtitle={user ? (serverHasCoach ? t('Your server runs the Coach with whatever provider its admin set up. Nothing new leaves this phone beyond what already syncs.') : config == null ? t('Loading…') : t('Your server has no Coach enabled. Ask its admin, or bring your own key below.')) : t('Connect to my server')}
-        accessory="chevron" onClick={() => { if (!user || serverHasCoach) useServer(); else setChoice('server') }} />
       <Row icon="key" iconTint="var(--acc)" title={t('Bring my own API key')}
         subtitle={t('This phone calls the provider directly with your key. Every request is charged to your account.')}
         accessory="chevron" onClick={() => setChoice('byok')} />
     </Section>
-
-    {choice === 'server' && !serverHasCoach && <div className="card">
-      <div className="muted small">{t('Your server has no Coach enabled. Ask its admin, or bring your own key below.')}</div>
-    </div>}
 
     {choice === 'byok' && <>
       <Section title={t('Provider')}>

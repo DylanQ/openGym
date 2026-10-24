@@ -2,7 +2,7 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { EXDB, EXIDX, BODYPARTS, isCardio, isBodyweightEq, allExercises, equipmentOf, byCategory, smOf, searchExercises, similarExercises, exOr, isAssisted, betterWeight, beatsWeight, isCustomEx } from './lib/exercises.js'
-import { activeProfile, exAvailable, ALL_EQUIPMENT, newProfile, profileEquipment, ACC_V } from './lib/equipment.js'
+import { activeProfile, exAvailable, ALL_EQUIPMENT, profileEquipment } from './lib/equipment.js'
 import { fmtDate, fmtDateRange, fmtNum, fmtPlate, exerciseNameText, fmtVol, fmtDur, durPart, todayISO, isoOf, uid, exCount, routineCount, setsWorkCount, DAYN, DAYS, weekOrder, weekStartOf, weekDayOffset, MONTHS_LONG, ACCENTS } from './lib/format.js'
 import { lastEntryFor, bestWeightFor, bestWeightForEntry, buildSets, effectiveRoutineIds, workoutDay, workoutVolume, setsDone, setsDoneActive, setUnitsTotal, lastBW, sessionSections, setLabel, defaultConfig, cleanupSg, modeOf, effortOf, EFFORT, capEffort, stepEffort, isBw, isPerSide, sideReps, workSetsDone, applyIntensifierPlan, MAX_PLANNED_WARMUPS, NOTE_MAX } from './lib/history.js'
 import { usesBar, hasBarOverride, isNoBar, barTypeWeight, ownBarDefault, barPicks, withBarDefault, withStandardBars, defaultBarWeight, BAR_TYPES } from './lib/bar.js'
@@ -47,6 +47,7 @@ import { buildCompletedWorkout, sessionEnd } from './lib/finish-workout.js'
 import { refillAfter } from './lib/rotation.js'
 import { isWarmupRow, hasCompletedWork } from './lib/workout-model.js'
 import { recordSwap } from './lib/ex-pref.js'
+import { activeGym, gymsOf, saveGyms } from './lib/gyms.js'
 import { saveSessionAsRoutine } from './lib/session-routines.js'
 import { repeatSessionEntries } from './lib/session-repeat.js'
 import { swapActiveExercise } from './lib/active-exercise-swap.js'
@@ -904,7 +905,16 @@ function DumbbellInventorySheet({ close }) {
   const unit = st.unit === 'lb' ? 'lb' : 'kg'
   const list = dumbbellsOf(st)
   const [draft, setDraft] = useState(null)
-  const save = ws => update(s => { s.dumbbells = withDumbbells(s, ws) })
+  // UX overhaul (Oct 2026): the inventory has ONE home. With an active gym, the list
+  // lives on the gym (saveGyms mirrors it onto the standing list the app reads); edits
+  // to the standing list alone were silently overwritten by the next gym switch — the
+  // "tabs don't talk" bug. Without a gym, the standing list is still the home.
+  const gym = activeGym(st)
+  const save = ws => update(s => {
+    const g = activeGym(s)
+    if (g) saveGyms(s, gymsOf(s).map(x => x.id === g.id ? { ...x, dbWeights: [...ws] } : x))
+    else s.dumbbells = withDumbbells(s, ws)
+  })
   const preset = presetWeights(unit)
   const add = () => {
     const w = cleanWeights([draft])[0]
@@ -916,6 +926,7 @@ function DumbbellInventorySheet({ close }) {
     <h3>{t('Dumbbells')}</h3>
     <div className="muted small" style={{ marginBottom: 14 }}>
       {t('The weights you own, one bell each. Progression, deloads, warm-ups and the + and − buttons of dumbbell lifts land only on these.')}
+      {gym && <div style={{ marginTop: 6 }}>{t('Saved on {0} — the gym owns this list, so every tab steps over the same bells.', gym.name)}</div>}
     </div>
     {list.length > 0
       ? <div className="chips" style={{ flexWrap: 'wrap', overflow: 'visible', touchAction: 'auto', marginBottom: 12 }}>
@@ -1576,51 +1587,11 @@ export function swapActiveWorkoutExercise(index) {
   }
 }
 
-/* ============================ equipment profiles ============================ */
-// Create or edit one profile ("Home", "Gym", ...): a name plus a checklist of what you have.
-function EquipmentProfileSheet({ profile, close }) {
-  const update = useStore(s => s.update)
-  const nameRef = useRef(null)
-  const [checked, setChecked] = useState(new Set(profile ? profileEquipment(profile) : []))
-  const toggle = k => setChecked(s => { const n = new Set(s); n.has(k) ? n.delete(k) : n.add(k); return n })
-  const save = () => {
-    const name = (nameRef.current.value || '').trim()
-    if (!name) { return }
-    update(s => {
-      s.equipProfiles = s.equipProfiles || []
-      const equipment = [...checked]
-      if (profile) {
-        const p = s.equipProfiles.find(x => x.id === profile.id)
-        if (p) { p.name = name; p.equipment = equipment; p.accV = ACC_V }
-      } else {
-        const p = newProfile(name); p.equipment = equipment
-        s.equipProfiles.push(p)
-        if (!s.activeEquipId) s.activeEquipId = p.id
-      }
-    })
-    close()
-  }
-  return <>
-    <h3>{profile ? t('Edit profile') : t('New equipment profile')}</h3>
-    <div className="muted small" style={{ marginBottom: 14 }}>
-      {t('Name it after where you train (like "Home" or "Gym"), then tick what you’ve got there.')}
-    </div>
-    <TextField ref={nameRef} defaultValue={profile?.name || ''} placeholder={t('Profile name')} maxLength={40} />
-    <div style={{ height: 12 }} />
-    <div className="chips">
-      {ALL_EQUIPMENT.map(k => (
-        <button key={k} className={'chip' + (checked.has(k) ? ' on' : '')} onClick={() => toggle(k)}>{t(k)}</button>
-      ))}
-    </div>
-    <div className="dim small" style={{ marginTop: 10 }}>
-      {t('Body-weight exercises are always available, unless they need a pull-up bar or a bench.')}
-    </div>
-    <div style={{ height: 14 }} /><Button variant="primary" onClick={save}>{t('Save')}</Button>
-  </>
-}
-export const equipmentProfileSheet = profile => ui().openSheet(close => <EquipmentProfileSheet profile={profile} close={close} />)
-
 /* ============================ exercise config ============================ */
+// (UX overhaul, Oct 2026: the equipment-profile editor lived here and edited the
+// equipProfiles mirror that switchGym overwrites — edits made in Settings silently
+// vanished on the next gym switch. Gyms are the one home for equipment now; the
+// editor is gone, the mirror machinery in lib/equipment.js stays.)
 // Progression settings for one exercise (issue #17). Shown inside the config sheet because
 // "how does this lift go up" belongs next to sets and reps, not in a separate screen. Left
 // on "follow the routine" it inherits, so most people never touch it.

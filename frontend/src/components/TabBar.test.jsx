@@ -10,8 +10,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import TabBar from './TabBar.jsx'
 import { DEF, useStore } from '../store/useStore.js'
 
+const nav = vi.fn()
 vi.mock('react-router-dom', () => ({
-  useNavigate: () => () => {},
+  useNavigate: () => nav,
   useLocation: () => ({ pathname: '/home' }),
 }))
 
@@ -63,20 +64,16 @@ describe('the tab bar across a store write', () => {
   })
 })
 
-// Settings → "Show connection status" off (#369, #330): a stuck sync shows as a dot on Home, the
-// tab Settings opens from, and the tab's name says it.
-describe('the connection dot on Home', () => {
+// Local-only (Oct 2026): there is no server, so there is no connection dot any
+// more — a stuck sync cannot exist. Home carries no dot and no connection label
+// whatever the (now dead) sync state says.
+describe('no connection dot on Home', () => {
   const home = () => tabs()[0]
-  it('is there for a sync problem only while the banner is switched off', () => {
+  it('never shows one, even with a sync error in state', () => {
     const original = useStore.getState().sync
     try {
       useStore.setState({ sync: { status: 'error', lastError: { status: 502 }, pending: true } })
-      act(() => { root.render(<TabBar onStart={() => {}} />) })
-      expect(home().querySelector('.tab-dot')).toBeNull()
-      act(() => { useStore.getState().update(s => { s.connStatus = false }, false) })
-      expect(home().querySelector('.tab-dot')).not.toBeNull()
-      expect(home().getAttribute('aria-label')).toBe('Home, Connection problem')
-      act(() => { useStore.setState({ sync: { status: 'ok', lastError: null, pending: false } }) })
+      act(() => { root.render(<TabBar />) })
       expect(home().querySelector('.tab-dot')).toBeNull()
       expect(home().getAttribute('aria-label')).toBeNull()
     } finally { useStore.setState({ sync: original }) }
@@ -88,6 +85,17 @@ describe('the connection dot on Home', () => {
 // way. Without min-width:0 a flex item's floor is its label's min-content — Exercises and
 // Nutrition set their tabs' widths, the row outgrew the screen and the end tabs spilled.
 // The label rule is the second half: a label too wide for its sixth truncates in place.
+// UX overhaul (Oct 2026): Start lands on the Start screen, where Today's Entry is
+// the default — it never jumps straight into a planned session any more.
+describe('Start goes to the Start screen', () => {
+  it('navigates to /workout instead of starting anything', () => {
+    nav.mockClear()
+    act(() => { root.render(<TabBar />) })
+    act(() => { tabs()[2].click() })
+    expect(nav).toHaveBeenCalledWith('/workout')
+  })
+})
+
 describe('the six-tab bar at phone widths', () => {
   const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
   const rule = sel => css.match(new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\{([^}]*)\\}'))?.[1] || ''

@@ -31,7 +31,9 @@ const scrolledTo = async y => {
 
 beforeEach(async () => {
   originalS = useStore.getState().S
-  useStore.setState({ S: JSON.parse(JSON.stringify(DEF)) })
+  // Post-intro user: a fresh DEF would show the First Entry wizard instead of
+  // the routed page (intro for everyone, Oct 2026) — not what this test is about.
+  useStore.setState({ S: { ...JSON.parse(JSON.stringify(DEF)), introSeen: true } })
   localStorage.setItem('gym_guest', '1')   // a guest: the app itself, no sign-in screen
   window.location.hash = '#/settings'
   host = document.createElement('div'); document.body.appendChild(host); root = createRoot(host)

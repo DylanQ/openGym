@@ -1,8 +1,8 @@
-// Whether the Coach is here, once that is known. A cold start straight on #/coach or
-// #/coach/intake (a reload, a bookmark) reads the store before it has the answer: /api/config is
-// fetched at boot without a session, so it carries no `coach` key, and setUser asks again only
-// afterwards (useStore setUser). Deciding then sent everyone home (QA v1.4.2). Here the screens
-// wait for an answer made for this session, asking for one if it is missing, and decide after.
+// Whether the Coach is here, once that is known. Local-only (Oct 2026): there is
+// no server Coach any more, so the answer is just the phone's own mode — a legacy
+// stored 'server' mode is not available, and setup offers the phone's own key.
+// (A cold start straight on #/coach used to wait on a boot /api/config answer;
+// with no user that fetch never happens now, and `fresh` below is true at once.)
 import { useEffect, useState } from 'react'
 import { useStore } from '../store/useStore.js'
 import { coachAvailable } from './coach.js'

@@ -23,20 +23,17 @@ import { startLiveActivitySync } from './lib/live-activity.js'
 import { useWakeLock } from './lib/wakelock.js'
 import { installViewportGuard } from './lib/viewport-guard.js'
 import { installChipDrag } from './lib/hchips.js'
-import { syncPushSubscription } from './lib/push.js'
 import { MOBILE, nativePlatform } from './lib/mobile.js'
-import { exitWorkoutEdit, startFlow, beginWorkout } from './sheets.jsx'
+import { exitWorkoutEdit, beginWorkout } from './sheets.jsx'
+import { needsIntro } from './lib/profile.js'
 import Icon from './components/Icon.jsx'
 import TabBar from './components/TabBar.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import Modals from './components/Modals.jsx'
 import Toast from './components/Toast.jsx'
-import SyncBanner from './components/SyncBanner.jsx'
 import RestTimer from './components/RestTimer.jsx'
 import TimerFlash from './components/TimerFlash.jsx'
-import { openDeviceLinkRedeem } from './components/Passkeys.jsx'
 import { useAnimPacksBoot } from './components/Animations.jsx'
-import Login from './views/Login.jsx'
 import MobileOnboarding from './views/MobileOnboarding.jsx'
 import PermissionSteps from './views/PermissionSteps.jsx'
 import Home from './views/Home.jsx'
@@ -52,7 +49,6 @@ import Muscles from './views/Muscles.jsx'
 import StructuralBalance from './views/StructuralBalance.jsx'
 import ProgressPhotos from './views/ProgressPhotos.jsx'
 import { SettingsRoute } from './views/Settings.jsx'
-import Admin from './views/Admin.jsx'
 import CoachChat from './views/CoachChat.jsx'
 import Measurements from './views/Measurements.jsx'
 import CoachIntake from './views/CoachIntake.jsx'
@@ -88,7 +84,7 @@ function Shell() {
   const navigate = useNavigate()
   const loc = useLocation()
   const navType = useNavigationType()
-  const { S, user, ready } = useStore()
+  const { S, ready } = useStore()
   // iOS: whether timer sounds get past the ring/silent switch (Settings → Sounds). Page-level,
   // so it is applied here on load and on change rather than at each beep.
   useEffect(() => { setPlayOnSilent(!!S.soundOnSilent) }, [S.soundOnSilent])
@@ -102,7 +98,6 @@ function Shell() {
   // Store apps: which animation packs this device has, and the one the chosen quality wants for
   // the figure shown (components/Animations.jsx). Nothing on the web.
   useAnimPacksBoot()
-  const isGuest = useStore(s => s.isGuest())
   const needsMobileOnboarding = useStore(s => s.needsMobileOnboarding)
   const permSteps = useStore(s => s.permSteps)
   const langV = useLang()   // re-renders the whole shell when the language (pack) changes
@@ -150,23 +145,8 @@ function Shell() {
   // Click-drag a horizontal chip strip to scroll it sideways (lib/hchips.js) — on a desktop
   // browser there's otherwise no way to reach the filters past the edge.
   useEffect(() => installChipDrag(), [])
-  // Once per signed-in boot, hand the server this browser's push subscription again (see
-  // lib/push.js): a subscription the instance lost is back before the next reminder is due,
-  // with nobody having to visit Settings. Web only — the APK has no service worker.
-  useEffect(() => {
-    if (MOBILE || !user || !ready) return
-    syncPushSubscription().catch(() => {})
-  }, [user?.id, ready])
-  // Opened from a device-link QR code (#95): once boot knows who is here, the sheet that redeems
-  // it opens by itself — over the sign-in screen, or over the app for a guest or a signed-in
-  // browser. Once per visit; closed, the code stays for the sign-in screen's own button.
-  const linkCode = useStore(s => s.linkCode)
-  const linkOffered = useRef(false)
-  useEffect(() => {
-    if (!ready || !linkCode || linkOffered.current) return
-    linkOffered.current = true
-    openDeviceLinkRedeem()
-  }, [ready, linkCode])
+  // Local-only (Oct 2026): no server, no sign-in — so no push subscription to hand
+  // over and no device-link pairing to redeem. Those effects are gone with the server.
   useEffect(() => {
     const onScroll = () => {
       // Modals pins the body while a sheet is open; scrollY is 0 then, not a position.
@@ -237,12 +217,14 @@ function Shell() {
   }, [inWorkout])
   // The chat owns the bottom of the screen as well: its composer sits where the tabs would be.
   // The first-launch card has no tabs either: they changed the route behind it.
-  const noTabs = inWorkout || loc.pathname === '/coach' || needsMobileOnboarding || permSteps
+  // The intro wizard (below) has no tabs either: it is the whole screen until done/skipped.
+  const introPending = needsIntro(S) && !S.active
+  const noTabs = inWorkout || loc.pathname === '/coach' || needsMobileOnboarding || permSteps || introPending
 
-  const authed = user || isGuest
   // The boot screen in index.html covers the start; it goes once there is something to show.
-  useEffect(() => { if (ready || authed) hideBoot() }, [ready, authed])
-  if (!ready && !authed) return (
+  // Local-only: there is no sign-in gate any more — ready is the only condition.
+  useEffect(() => { if (ready) hideBoot() }, [ready])
+  if (!ready) return (
     <div id="app">
       <div style={{ paddingTop: '44vh', display: 'flex', justifyContent: 'center', fontSize: 34, color: 'var(--label-3)' }}>
         <Icon name="dumbbell" />
@@ -250,7 +232,10 @@ function Shell() {
     </div>
   )
 
-  const view = l => (!authed ? <Login /> : needsMobileOnboarding ? <MobileOnboarding /> : permSteps ? <PermissionSteps /> : (
+  // Local-only (Oct 2026): no Login gate. The First Entry intro is the first thing a
+  // fresh — or never-introduced — install sees, once, pre-filled; an active workout
+  // always wins over it, so a session is never interrupted by the wizard.
+  const view = l => (introPending ? <FirstEntry /> : needsMobileOnboarding ? <MobileOnboarding /> : permSteps ? <PermissionSteps /> : (
     <Routes location={l}>
       <Route path="/home" element={<Home />} />
       {/* Gym check-in — switched off in Settings, the route falls through to the
@@ -284,11 +269,10 @@ function Shell() {
       <Route path="/coach/intake" element={<CoachIntake />} />
       <Route path="/coach/proposal" element={<Navigate to="/coach" replace />} />
       <Route path="/coach/setup" element={<CoachSetup />} />
-      <Route path="/admin" element={user?.admin ? <Admin /> : <Navigate to="/home" replace />} />
       <Route path="*" element={<Navigate to="/home" replace />} />
     </Routes>
   ))
-  const showPreview = !!preview && preview !== loc.pathname && authed && !needsMobileOnboarding && !permSteps
+  const showPreview = !!preview && preview !== loc.pathname && !introPending && !needsMobileOnboarding && !permSteps
 
   return (
     <>
@@ -301,11 +285,7 @@ function Shell() {
         <Page key={loc.pathname} loc={loc} render={view} />
         {showPreview && <Page key={preview} loc={previewLoc(preview)} render={view} under scrollY={scrollPositions.get(preview) || 0} />}
       </div>
-      {/* Outside #app: the view's fade-in animates a transform, and a fixed element inside it
-          would ride along with the page for the length of it. Decides for itself when to show —
-          including on the sign-in screen, when the server has just ended the session. */}
-      <SyncBanner />
-      {!noTabs && <TabBar onStart={startFlow} />}
+      {!noTabs && <TabBar />}
       <RestTimer />
       <Modals />
       <Toast />
